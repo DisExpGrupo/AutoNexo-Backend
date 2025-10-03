@@ -1,4 +1,4 @@
-package com.atg.autonexo.backend.iam.application.outboundservices.hashing;
+package com.atg.autonexo.backend.iam.application.internal.outboundservices.hashing;
 
 /**
  * HashingService interface
