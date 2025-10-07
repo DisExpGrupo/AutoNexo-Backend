@@ -1,6 +1,6 @@
 package com.atg.autonexo.backend.shared.infrastructure.multitenancy;
 
-import org.slf4j.Logger; // Usamos el Value Object de Dominio
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;

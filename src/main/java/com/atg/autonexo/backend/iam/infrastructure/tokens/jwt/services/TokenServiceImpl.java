@@ -1,19 +1,25 @@
 package com.atg.autonexo.backend.iam.infrastructure.tokens.jwt.services;
 
-import com.atg.autonexo.backend.iam.infrastructure.tokens.jwt.BearerTokenService;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.function.Function;
+
+import javax.crypto.SecretKey;
+
 import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.function.Function;
+
+import com.atg.autonexo.backend.iam.infrastructure.tokens.jwt.BearerTokenService;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Token service implementation for JWT tokens.
@@ -39,12 +45,11 @@ public class TokenServiceImpl implements BearerTokenService {
 
 
     /**
-     * Genera un token JWT basado en el nombre de usuario, rol y el workshopId condicional.
-     * Este es el método principal para usar en IAM.
-     * @param userId El nombre de usuario (subject)
-     * @param userRole El rol del usuario (ej. CAR_OWNER, WORKSHOP_WORKER)
-     * @param workshopId El ID del taller (null si el usuario es CAR_OWNER)
-     * @return El token JWT generado
+     * Generates a JWT token based on the user ID, user role, and optionally the workshop ID.
+     * @param userId The user ID (used as the subject)
+     * @param userRole The user's role 
+     * @param workshopId The workshop ID (null if the user is a CAR_OWNER)
+     * @return The generated JWT token
      */
     @Override
     public String generateToken(Long userId, String userRole, Long workshopId) {
@@ -113,6 +118,7 @@ public class TokenServiceImpl implements BearerTokenService {
     private boolean isTokenPresentIn(String authorizationParameter) {
         return StringUtils.hasText(authorizationParameter);
     }
+
 
     private boolean isBearerTokenIn(String authorizationParameter) {
         return authorizationParameter.startsWith(BEARER_TOKEN_PREFIX);

@@ -1,6 +1,7 @@
 package com.atg.autonexo.backend.iam.infrastructure.tokens.jwt;
 
 import com.atg.autonexo.backend.iam.application.internal.outboundservices.tokens.TokenService;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 
@@ -12,5 +13,6 @@ public interface BearerTokenService extends TokenService {
      * @return String the JWT token
      */
     String getBearerTokenFrom(HttpServletRequest token);
+
 
 }
