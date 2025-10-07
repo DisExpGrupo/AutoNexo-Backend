@@ -116,7 +116,9 @@ public class WebSecurityConfiguration {
                 // Authorization configuration
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers(
-                                "/api/v1/authentication/**", // Login/registration routes
+                                "/api/v1/users/signup", // User registration
+                                "/api/v1/users/signin", // User authentication
+                                "/api/v1/users/available-roles", // Available roles for registration
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",

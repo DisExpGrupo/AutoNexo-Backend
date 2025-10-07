@@ -84,6 +84,7 @@ public class TokenServiceImpl implements BearerTokenService {
         }
     }
 
+    @Override
     public Long getWorkshopIdFromToken(String token) {
         return extractClaim(token, claims -> claims.get(WORKSHOP_ID_CLAIM, Long.class));
     }

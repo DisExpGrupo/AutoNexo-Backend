@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.atg.autonexo.backend.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
@@ -18,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Filter responsible for extracting the Workshop ID from the Security Context (UserDetails)
  * and setting it into the WorkshopContext (ThreadLocal) for multi-tenancy.
  */
+@Component
 public class WorkshopExtractionFilter extends OncePerRequestFilter {
 
     @Override
