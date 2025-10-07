@@ -1,51 +1,73 @@
 package com.atg.autonexo.backend.shared.infrastructure.multitenancy;
 
+import org.slf4j.Logger; // Usamos el Value Object de Dominio
+import org.slf4j.LoggerFactory;
+
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;
+
 /**
- * Thread-safe context holder for tenant information
- * This class provides a way to store and retrieve tenant information
- * for the current thread/request context across all bounded contexts
+ * Thread-safe context holder for workshop information (multitenancy).
+ * This class provides a way to store and retrieve the WorkshopId 
+ * for the current thread/request context across all bounded contexts.
  */
 public class WorkshopContext {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkshopContext.class);
+
+    private static final ThreadLocal<WorkshopId> CURRENT_WORKSHOP_ID = new ThreadLocal<>();
     
-    private static final ThreadLocal<Long> CURRENT_WORKSHOP_ID = new ThreadLocal<>();
-    private static final Long DEFAULT_WORKSHOP_ID = 1L;
-    
+
     private WorkshopContext() {
         // Private constructor to prevent instantiation
     }
     
     /**
-     * Set the workshop ID for current thread
-     * @param workshopId the workshop ID
+     * Set the workshop ID for the current thread.
+     * @param workshopId The ID of the workshop (null if user is CAR_OWNER).
      */
-    public static void setCurrentTenantId(Long workshopId) {
-        CURRENT_WORKSHOP_ID.set(workshopId != null ? workshopId : DEFAULT_WORKSHOP_ID);
+    public static void setCurrentWorkshopId(Long workshopId) {
+        if (workshopId != null && workshopId > 0) {
+            CURRENT_WORKSHOP_ID.set(new WorkshopId(workshopId)); 
+            LOGGER.debug("WorkshopContext set to ID: {}", workshopId);
+        } else {
+            clear();
+        }
     }
     
     /**
-     * Get the current workshop ID
-     * @return current tenant ID or default if not set
+     * Get the current WorkshopId Value Object.
+     * @return The WorkshopId object, or null if no context is set.
      */
-    public static Long getCurrentTenantId() {
-        if (CURRENT_WORKSHOP_ID.get() == null) {
-            throw new IllegalStateException("Workshop context not found. Workshop ID must be set before accessing it.");
-        }
+    public static WorkshopId getCurrentWorkshopId() {
         return CURRENT_WORKSHOP_ID.get();
     }
     
     /**
-     * Clear the tenant context for current thread
-     * Should be called at the end of request processing
+     * Get the current workshop ID as a primitive Long.
+     * Throws IllegalStateException if the context is not set (null).
+     * @return current workshop ID.
      */
-    public static void clear() {
-        CURRENT_WORKSHOP_ID.remove();
+    public static Long getCurrentWorkshopIdAsLong() {
+        WorkshopId context = CURRENT_WORKSHOP_ID.get();
+        if (context == null) {
+            throw new IllegalStateException("Workshop context not found. Workshop ID must be set for WORKSHOP_WORKER access.");
+        }
+        return context.id();
     }
     
     /**
-     * Check if a tenant is currently set
-     * @return true if tenant is set, false otherwise
+     * Clear the workshop context for current thread.
+     * Should be called at the end of request processing (in the filter's finally block).
      */
-    public static boolean hasTenant() {
+    public static void clear() {
+        CURRENT_WORKSHOP_ID.remove();
+        LOGGER.debug("WorkshopContext cleared.");
+    }
+    
+    /**
+     * Check if a workshop context is currently set.
+     * @return true if WorkshopId is set, false otherwise.
+     */
+    public static boolean hasWorkshopContext() {
         return CURRENT_WORKSHOP_ID.get() != null;
     }
-} 
+}
