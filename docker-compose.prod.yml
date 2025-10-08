@@ -1,0 +1,66 @@
+version: '3.8'
+
+# ========================================================
+# SOLO API - Simula Azure (sin MySQL local)
+# ========================================================
+# Uso: docker-compose -f docker-compose.prod.yml up -d
+# 
+# Este archivo simula el despliegue en Azure donde:
+# - Solo despliegas tu API en contenedor
+# - La base de datos está separada (Azure Database for MySQL)
+# 
+# Debes tener MySQL corriendo en otro lugar:
+# - MySQL local en tu PC (no en Docker)
+# - O Azure Database for MySQL
+# ========================================================
+
+services:
+  autonexo-api:
+    image: autonexo-api:latest
+    container_name: autonexo-backend-prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      
+      # Database - Conecta a MySQL externo
+      # Opción 1: MySQL local en tu PC (no en Docker)
+      # DB_HOST: host.docker.internal
+      #
+      # Opción 2: Azure Database for MySQL
+      # DB_HOST: tu-servidor.mysql.database.azure.com
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      
+      # JWT - OBLIGATORIO en variables de entorno
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_DAYS: ${JWT_EXPIRATION_DAYS:-7}
+      
+      # Cloudinary
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_BASE_URL: ${CLOUDINARY_BASE_URL:-autonexo}
+      
+      # Flyway
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-false}
+      
+      # Server
+      PORT: ${PORT:-8080}
+      
+      # JVM Options
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
