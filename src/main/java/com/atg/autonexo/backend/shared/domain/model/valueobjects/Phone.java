@@ -1,5 +1,6 @@
 package com.atg.autonexo.backend.shared.domain.model.valueobjects;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.util.regex.Pattern;
 
@@ -8,7 +9,7 @@ import java.util.regex.Pattern;
  * Ensures immutability and validation.
  */
 @Embeddable
-public record Phone(String number) {
+public record Phone(@Column(name = "phone_number") String number) {
     private static final Pattern PHONE_PATTERN = Pattern.compile(
         "^\\+?[0-9 .\\-()]{7,20}$"
     );

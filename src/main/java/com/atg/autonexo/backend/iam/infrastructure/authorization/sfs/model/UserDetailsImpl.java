@@ -73,7 +73,7 @@ public class UserDetailsImpl implements UserDetails {
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
         
-        var workshopId = user.getWorkshop() != null ? user.getWorkshop().getWorkshopId().id() : null;
+        var workshopId = user.getWorkshopReference() != null ? user.getWorkshopReference().getWorkshopId().id() : null;
         return new UserDetailsImpl(
                 user.getId(),
                 user.getPasswordHash(),

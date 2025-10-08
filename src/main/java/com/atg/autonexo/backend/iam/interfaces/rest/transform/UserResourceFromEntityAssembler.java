@@ -25,7 +25,7 @@ public class UserResourceFromEntityAssembler {
                 .map(role -> role.getName().name())
                 .collect(Collectors.toList());
         
-        Long workshopId = user.getWorkshop() != null ? user.getWorkshop().getId() : null;
+        Long workshopId = user.getWorkshopReference() != null ? user.getWorkshopReference().getId() : null;
         
         return new UserResource(
             user.getId(),

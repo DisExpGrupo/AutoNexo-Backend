@@ -1,10 +1,11 @@
 package com.atg.autonexo.backend.shared.domain.model.valueobjects;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.util.regex.Pattern;
 
 @Embeddable
-public record Email(String value) {
+public record Email(@Column(name = "email") String value) {
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
         "^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
         Pattern.CASE_INSENSITIVE

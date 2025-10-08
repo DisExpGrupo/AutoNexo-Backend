@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.atg.autonexo.backend.iam.domain.model.entities.Role;
-import com.atg.autonexo.backend.iam.domain.model.entities.Workshop;
+import com.atg.autonexo.backend.iam.domain.model.entities.WorkshopReference;
 import com.atg.autonexo.backend.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 
 import jakarta.persistence.Column;
@@ -57,8 +57,8 @@ public class User extends AuditableAbstractAggregateRoot<User> {
 
     // Relación Opcional con Taller 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "workshop_id", nullable = true)
-    private Workshop workshop;
+    @JoinColumn(name = "workshop_reference_id", nullable = true)
+    private WorkshopReference workshopReference;
 
     protected User() {
         this.roles = new ArrayList<>();
@@ -66,8 +66,6 @@ public class User extends AuditableAbstractAggregateRoot<User> {
 
     /**
      * Constructor for the User aggregate root
-     * @param userId the user ID
-     * @param businessId the business ID
      * @param email the email
      * @param passwordHash the password hash
      * @param firstName the first name

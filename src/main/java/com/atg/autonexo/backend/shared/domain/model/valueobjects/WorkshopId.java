@@ -1,5 +1,6 @@
 package com.atg.autonexo.backend.shared.domain.model.valueobjects;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 /**
@@ -8,7 +9,7 @@ import jakarta.persistence.Embeddable;
  * by the Infrastructure layer (WorkshopContext) to manage the execution scope.
  */
 @Embeddable
-public record WorkshopId(Long id) {
+public record WorkshopId(@Column(name = "workshop_id") Long id) {
     
     public WorkshopId {
         if (id == null || id <= 0) {

@@ -18,18 +18,18 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "workshops_reference")
-public class Workshop extends AuditableModel {
+@Table(name = "iam_workshop_references")
+public class WorkshopReference extends AuditableModel {
     
     @Embedded
     @AttributeOverride(name = "id", column = @Column(name = "workshop_id", unique = true, nullable = false))
     private WorkshopId workshopId;
 
-    protected Workshop() {
+    protected WorkshopReference() {
         // Required by JPA 
     }
     
-    public Workshop(Long workshopId) {
+    public WorkshopReference(Long workshopId) {
         this.workshopId = new WorkshopId(workshopId);
     }
     

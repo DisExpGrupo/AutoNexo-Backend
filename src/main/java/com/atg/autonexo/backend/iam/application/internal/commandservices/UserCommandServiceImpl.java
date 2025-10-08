@@ -126,7 +126,7 @@ public class UserCommandServiceImpl implements UserCommandService {
         String userRole = user.getRoles().isEmpty() ? "CAR_OWNER" : 
                          user.getRoles().get(0).getName().name();
         
-        Long workshopId = user.getWorkshop() != null ? user.getWorkshop().getId() : null;
+        Long workshopId = user.getWorkshopReference() != null ? user.getWorkshopReference().getWorkshopId().id() : null;
         
         return tokenService.generateToken(user.getId(), userRole, workshopId);
     }

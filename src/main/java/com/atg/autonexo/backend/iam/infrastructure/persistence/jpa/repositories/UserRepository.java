@@ -3,6 +3,7 @@ package com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories
 import java.util.List;
 import java.util.Optional;
 
+import com.atg.autonexo.backend.iam.domain.model.entities.WorkshopReference;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -35,6 +36,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @param workshopId the workshop ID
      * @return List of users for the workshop
      */
-    List<User> findAllByWorkshopId(Long workshopId);
+    List<User> findAllByWorkshopReference(WorkshopReference workshopId);
     
 } 
