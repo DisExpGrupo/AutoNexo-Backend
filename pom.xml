@@ -32,6 +32,14 @@
         <maven.compiler.target>25</maven.compiler.target>
     </properties>
     <dependencies>
+
+        <!-- Cloudinary -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http44</artifactId>
+            <version>1.37.0</version>
+        </dependency>
+
         <!-- Database Drivers -->
         <dependency>
             <groupId>com.mysql</groupId>
