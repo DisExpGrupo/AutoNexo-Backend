@@ -13,13 +13,10 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Azure App Service usa la variable PORT
 EXPOSE ${PORT:-8080}
 
-# Variables de entorno por defecto (Azure las sobreescribe)
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 

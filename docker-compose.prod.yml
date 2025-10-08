@@ -1,19 +1,5 @@
 version: '3.8'
 
-# ========================================================
-# SOLO API - Simula Azure (sin MySQL local)
-# ========================================================
-# Uso: docker-compose -f docker-compose.prod.yml up -d
-# 
-# Este archivo simula el despliegue en Azure donde:
-# - Solo despliegas tu API en contenedor
-# - La base de datos está separada (Azure Database for MySQL)
-# 
-# Debes tener MySQL corriendo en otro lugar:
-# - MySQL local en tu PC (no en Docker)
-# - O Azure Database for MySQL
-# ========================================================
-
 services:
   autonexo-api:
     image: autonexo-api:latest
@@ -24,17 +10,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Profile
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      
-      # Database - Conecta a MySQL externo
-      # Opción 1: MySQL local en tu PC (no en Docker)
-      # DB_HOST: host.docker.internal
-      #
-      # Opción 2: Azure Database for MySQL
-      # DB_HOST: tu-servidor.mysql.database.azure.com
       DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-3306}
+      DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
