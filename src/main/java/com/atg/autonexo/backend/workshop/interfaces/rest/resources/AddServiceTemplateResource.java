@@ -13,7 +13,7 @@ import jakarta.validation.constraints.Size;
  */
 public record AddServiceTemplateResource(
     @Size(min = 3, max = 20, message = "Code must be between 3 and 20 characters")
-    String code,
+    String code, 
     
     /**
      * Optional link to ServiceCatalog.

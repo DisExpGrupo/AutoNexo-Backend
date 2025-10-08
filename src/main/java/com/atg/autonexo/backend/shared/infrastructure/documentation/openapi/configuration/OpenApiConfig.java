@@ -30,18 +30,17 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI autonexoOpenApi() {
-        /*
         // Define the security scheme for JWT
         var jwtSecurityScheme = new SecurityScheme()
                 .type(SecurityScheme.Type.HTTP)
                 .scheme("bearer")
                 .bearerFormat("JWT")
                 .in(SecurityScheme.In.HEADER)
-                .name("Authorization");
+                .name("Authorization")
+                .description("Enter your JWT Bearer token in the format: your-jwt-token-here (without 'Bearer ' prefix)");
 
         // Define the security requirement
         var securityRequirement = new SecurityRequirement().addList("Bearer Authentication");
-        */
 
         // Configure contact information
         var contact = new Contact()
@@ -65,8 +64,8 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .openapi("3.0.1")
-                .info(info);
-        //.addSecurityItem(securityRequirement)
-        //.components(new Components().addSecuritySchemes("Bearer Authentication", jwtSecurityScheme));
+                .info(info)
+                .addSecurityItem(securityRequirement)
+                .components(new Components().addSecuritySchemes("Bearer Authentication", jwtSecurityScheme));
     }
 }
