@@ -1,8 +1,14 @@
 package com.atg.autonexo.backend.workshop.application.internal.commandservices;
 
+import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
+import com.atg.autonexo.backend.iam.domain.model.entities.WorkshopReference;
+import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
+import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.WorkshopReferenceRepository;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.Email;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.UserId;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;
+import com.atg.autonexo.backend.shared.infrastructure.multitenancy.WorkshopContext;
+import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopContextNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Invitation;
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Workshop;
@@ -39,30 +45,43 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
     private final InvitationRepository invitationRepository;
     private final WorkshopRepository workshopRepository;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
+    private final WorkshopReferenceRepository workshopReferenceRepository;
     
     public InvitationCommandServiceImpl(
             InvitationRepository invitationRepository,
             WorkshopRepository workshopRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            UserRepository userRepository,
+            WorkshopReferenceRepository workshopReferenceRepository) {
         this.invitationRepository = invitationRepository;
         this.workshopRepository = workshopRepository;
         this.notificationService = notificationService;
+        this.userRepository = userRepository;
+        this.workshopReferenceRepository = workshopReferenceRepository;
     }
     
     @Override
     public Invitation handle(CreateInvitationCommand command) {
-        LOGGER.info("Creating invitation for workshop ID: {}", command.workshopId());
+        // Get workshop ID from context
+        if (!WorkshopContext.hasWorkshopContext()) {
+            throw new WorkshopContextNotFoundException();
+        }
+        
+        Long workshopId = WorkshopContext.getCurrentWorkshopIdAsLong();
+        LOGGER.info("Creating invitation for workshop ID: {}", workshopId);
         
         try {
             // Verify workshop exists
-            Workshop workshop = workshopRepository.findById(command.workshopId())
-                .orElseThrow(() -> new WorkshopNotFoundException(command.workshopId()));
+            Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new WorkshopNotFoundException(workshopId));
             
             // Generate unique invitation code
             String code = generateUniqueCode();
             
             // Calculate expiration date
-            int validityDays = command.validityDays() != null ? command.validityDays() : DEFAULT_VALIDITY_DAYS;
+            Integer validityDaysInput = command.validityDays();
+            int validityDays = (validityDaysInput != null) ? validityDaysInput : DEFAULT_VALIDITY_DAYS;
             LocalDateTime expiresAt = LocalDateTime.now().plusDays(validityDays);
             
             // Create invitation
@@ -71,7 +90,7 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
                 new InvitationCode(code),
                 expiresAt,
                 email,
-                new WorkshopId(command.workshopId()),
+                new WorkshopId(workshopId),
                 command.message()
             );
             
@@ -94,8 +113,8 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
             
             return savedInvitation;
             
-        } catch (WorkshopNotFoundException e) {
-            LOGGER.error("Workshop not found: {}", command.workshopId());
+        } catch (WorkshopNotFoundException | WorkshopContextNotFoundException e) {
+            LOGGER.error("Workshop not found: {}", workshopId);
             throw e;
         } catch (Exception e) {
             LOGGER.error("Error creating invitation: {}", e.getMessage(), e);
@@ -105,12 +124,15 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
     
     @Override
     public StaffMember handle(AcceptInvitationCommand command) {
-        LOGGER.info("Accepting invitation with code: {}", command.invitationCode());
+        LOGGER.info("Accepting invitation with code: {} for email: {}", command.invitationCode(), command.email());
         
         try {
-            // Find invitation
-            Invitation invitation = invitationRepository.findByCode(command.invitationCode())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid invitation code"));
+            // Find invitation using domain logic
+            Invitation invitation = invitationRepository.findAll().stream()
+                .filter(inv -> inv.matchesCodeAndEmail(command.invitationCode(), command.email()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "Invalid invitation code or email. Please verify your invitation details."));
             
             // Validate invitation can be used
             if (!invitation.canBeUsed()) {
@@ -120,13 +142,38 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
                 throw new IllegalStateException("Invitation has already been used");
             }
             
+            // Find user by email
+            User user = userRepository.findByEmail(command.email())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "User not found with email: " + command.email()));
+            
+            // Check if user already has a workshop reference
+            if (user.getWorkshopReference() != null) {
+                throw new IllegalStateException(
+                    "User is already associated with another workshop");
+            }
+            
             // Find workshop
             Workshop workshop = workshopRepository.findById(invitation.getWorkshopId().id())
                 .orElseThrow(() -> new WorkshopNotFoundException(invitation.getWorkshopId().id()));
             
-            // Create staff member
+            // Create or get workshop reference using domain logic
+            Long workshopId = invitation.getWorkshopId().id();
+            WorkshopReference workshopReference = workshopReferenceRepository.findAll().stream()
+                .filter(ref -> ref.isForWorkshop(workshopId))
+                .findFirst()
+                .orElseGet(() -> {
+                    WorkshopReference newRef = new WorkshopReference(workshopId);
+                    return workshopReferenceRepository.save(newRef);
+                });
+            
+            // Associate user with workshop in IAM context
+            user.setWorkshopReference(workshopReference);
+            userRepository.save(user);
+            
+            // Create staff member in workshop context
             StaffMember staffMember = new StaffMember(
-                new UserId(command.userId()),
+                new UserId(user.getId()),
                 null // No primary location assigned yet
             );
             
@@ -136,11 +183,18 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
             workshopRepository.save(workshop);
             invitationRepository.save(invitation);
             
-            LOGGER.info("Invitation accepted, staff member added to workshop: {}", workshop.getId());
+            LOGGER.info("Invitation accepted, user {} added as staff member to workshop: {}", 
+                user.getId(), workshop.getId());
             return staffMember;
             
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            LOGGER.warn("Failed to accept invitation: {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid invitation parameters: {}", e.getMessage());
+            throw e;
+        } catch (IllegalStateException e) {
+            LOGGER.warn("Invalid invitation state: {}", e.getMessage());
+            throw e;
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.error("Workshop not found: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             LOGGER.error("Error accepting invitation: {}", e.getMessage(), e);
@@ -150,6 +204,7 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
     
     /**
      * Generates a unique 8-character invitation code
+     * Uses domain logic to check for uniqueness
      */
     private String generateUniqueCode() {
         String code;
@@ -162,7 +217,14 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
                 code = generateRandomCode().substring(0, 6) + 
                        String.format("%02d", System.currentTimeMillis() % 100);
             }
-        } while (invitationRepository.existsByCode(code) && attempts < 20);
+            // Check uniqueness using domain logic
+            final String currentCode = code;
+            boolean exists = invitationRepository.findAll().stream()
+                .anyMatch(inv -> inv.hasCode(currentCode));
+            if (!exists) {
+                break;
+            }
+        } while (attempts < 20);
         
         return code;
     }

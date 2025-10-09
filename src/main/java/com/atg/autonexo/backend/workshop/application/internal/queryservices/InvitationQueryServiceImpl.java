@@ -35,7 +35,10 @@ public class InvitationQueryServiceImpl implements InvitationQueryService {
         LOGGER.debug("Fetching invitation by code: {}", query.code());
         
         try {
-            return invitationRepository.findByCode(query.code());
+            // Use domain logic to filter invitations
+            return invitationRepository.findAll().stream()
+                .filter(invitation -> invitation.hasCode(query.code()))
+                .findFirst();
         } catch (Exception e) {
             LOGGER.error("Error fetching invitation by code: {}", e.getMessage(), e);
             return Optional.empty();
@@ -47,7 +50,11 @@ public class InvitationQueryServiceImpl implements InvitationQueryService {
         LOGGER.debug("Fetching invitations for workshop ID: {}", query.workshopId());
         
         try {
-            return invitationRepository.findByWorkshopId(query.workshopId());
+            // Use domain logic to filter invitations by workshop
+            return invitationRepository.findAll().stream()
+                .filter(invitation -> invitation.belongsToWorkshop(query.workshopId()))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // Most recent first
+                .toList();
         } catch (Exception e) {
             LOGGER.error("Error fetching invitations for workshop: {}", e.getMessage(), e);
             return List.of();

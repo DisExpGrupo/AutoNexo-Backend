@@ -16,10 +16,12 @@ import com.atg.autonexo.backend.iam.domain.model.entities.Role;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.InvalidCredentialsException;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.UserAccountDeactivatedException;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.UserAlreadyExistsException;
+import com.atg.autonexo.backend.iam.domain.model.valueobjects.Roles;
 import com.atg.autonexo.backend.iam.domain.services.RoleValidationService;
 import com.atg.autonexo.backend.iam.domain.services.UserCommandService;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.RoleRepository;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
+import com.atg.autonexo.backend.workshop.interfaces.acl.WorkshopContextFacade;
 
 /**
  * User Command Service Implementation
@@ -40,23 +42,27 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final HashingService hashingService;
     private final TokenService tokenService;
     private final RoleValidationService roleValidationService;
+    private final WorkshopContextFacade workshopContextFacade;
 
     public UserCommandServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
             HashingService hashingService,
             TokenService tokenService,
-            RoleValidationService roleValidationService) {
+            RoleValidationService roleValidationService,
+            WorkshopContextFacade workshopContextFacade) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.hashingService = hashingService;
         this.tokenService = tokenService;
         this.roleValidationService = roleValidationService;
+        this.workshopContextFacade = workshopContextFacade;
     }
 
     @Override
     public void handle(SignUpCommand command) {
-        LOGGER.info("Processing SignUp command for email: {}", command.email());
+        LOGGER.info("Processing SignUp command for email: {} with role: {}", 
+            command.email(), command.requestedRole());
 
         // Check if user already exists
         if (userRepository.existsByEmail(command.email())) {
@@ -90,6 +96,32 @@ public class UserCommandServiceImpl implements UserCommandService {
         // Save user
         User savedUser = userRepository.save(user);
         LOGGER.info("User registered successfully with ID: {}", savedUser.getId());
+        
+        // Process invitation if user is WORKSHOP_EMPLOYEE and has invitation code
+        if (command.requestedRole() == Roles.WORKSHOP_EMPLOYEE && 
+            command.invitationCode() != null && !command.invitationCode().isBlank()) {
+            
+            LOGGER.info("Processing invitation code for WORKSHOP_EMPLOYEE: {}", command.invitationCode());
+            
+            try {
+                Long workshopId = workshopContextFacade.processInvitationForNewUser(
+                    command.invitationCode(), 
+                    command.email(), 
+                    savedUser.getId()
+                );
+                
+                LOGGER.info("User {} successfully added to workshop {} via invitation", 
+                    savedUser.getId(), workshopId);
+                
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                // If invitation processing fails, delete the created user to maintain consistency
+                LOGGER.error("Failed to process invitation for user {}. Rolling back user creation.", 
+                    savedUser.getId());
+                userRepository.delete(savedUser);
+                throw new IllegalArgumentException(
+                    "Failed to process invitation: " + e.getMessage(), e);
+            }
+        }
     }
 
     @Override

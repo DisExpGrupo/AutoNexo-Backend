@@ -51,7 +51,7 @@ public class BearerAuthorizationRequestFilter extends OncePerRequestFilter {
                 Long userId = tokenService.getUserIdFromToken(token);
                 
                 UserDetails userDetails = userDetailsService.loadUserById(userId);
-                
+                LOGGER.info("User loaded: {}", userDetails);
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 
                 var authenticationToken = UsernamePasswordAuthenticationTokenBuilder.build(userDetails, request);

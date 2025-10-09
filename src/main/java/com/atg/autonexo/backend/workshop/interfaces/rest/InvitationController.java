@@ -1,7 +1,9 @@
 package com.atg.autonexo.backend.workshop.interfaces.rest;
 
+import com.atg.autonexo.backend.shared.infrastructure.multitenancy.WorkshopContext;
 import com.atg.autonexo.backend.workshop.application.internal.commandservices.InvitationCommandServiceImpl;
 import com.atg.autonexo.backend.workshop.application.internal.queryservices.InvitationQueryServiceImpl;
+import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopContextNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Invitation;
 import com.atg.autonexo.backend.workshop.domain.model.commands.AcceptInvitationCommand;
 import com.atg.autonexo.backend.workshop.domain.model.commands.CreateInvitationCommand;
@@ -47,20 +49,22 @@ public class InvitationController {
     }
     
     /**
-     * Create a new invitation for a workshop
-     * @param workshopId the workshop ID
+     * Create a new invitation for the workshop (uses WorkshopContext from JWT)
      * @param resource the invitation creation data
      * @return ResponseEntity with created invitation
      */
-    @PostMapping("/workshops/{workshopId}")
-    public ResponseEntity<?> createInvitation(
-            @PathVariable Long workshopId,
-            @Valid @RequestBody CreateInvitationResource resource) {
+    @PostMapping
+    public ResponseEntity<?> createInvitation(@Valid @RequestBody CreateInvitationResource resource) {
         try {
+            if (!WorkshopContext.hasWorkshopContext()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Workshop context not found. This operation requires a workshop user.");
+            }
+            
+            Long workshopId = WorkshopContext.getCurrentWorkshopIdAsLong();
             LOGGER.info("Processing create invitation request for workshop ID: {}", workshopId);
             
             CreateInvitationCommand command = new CreateInvitationCommand(
-                workshopId,
                 resource.email(),
                 resource.message(),
                 resource.validityDays()
@@ -73,6 +77,9 @@ public class InvitationController {
             LOGGER.info("Invitation created successfully with code: {}", invitation.getInvitationCode().value());
             return ResponseEntity.status(HttpStatus.CREATED).body(invitationResource);
             
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invitation creation failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -85,17 +92,19 @@ public class InvitationController {
     
     /**
      * Accept an invitation and join workshop as staff member
-     * @param resource the acceptance data
+     * Validates both invitation code and user email
+     * @param resource the acceptance data (code + email)
      * @return ResponseEntity with success message
      */
     @PostMapping("/accept")
     public ResponseEntity<?> acceptInvitation(@Valid @RequestBody AcceptInvitationResource resource) {
         try {
-            LOGGER.info("Processing accept invitation request for code: {}", resource.invitationCode());
+            LOGGER.info("Processing accept invitation request for code: {} and email: {}", 
+                resource.invitationCode(), resource.email());
             
             AcceptInvitationCommand command = new AcceptInvitationCommand(
                 resource.invitationCode(),
-                resource.userId()
+                resource.email()
             );
             
             StaffMember staffMember = invitationCommandService.handle(command);
@@ -145,13 +154,18 @@ public class InvitationController {
     }
     
     /**
-     * Get all invitations for a workshop
-     * @param workshopId the workshop ID
+     * Get all invitations for the workshop (uses WorkshopContext from JWT)
      * @return ResponseEntity with list of invitations
      */
-    @GetMapping("/workshops/{workshopId}")
-    public ResponseEntity<?> getInvitationsByWorkshop(@PathVariable Long workshopId) {
+    @GetMapping
+    public ResponseEntity<?> getInvitationsByWorkshop() {
         try {
+            if (!WorkshopContext.hasWorkshopContext()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Workshop context not found. This operation requires a workshop user.");
+            }
+            
+            Long workshopId = WorkshopContext.getCurrentWorkshopIdAsLong();
             LOGGER.debug("Processing get invitations for workshop request: {}", workshopId);
             
             List<Invitation> invitations = invitationQueryService
@@ -163,6 +177,9 @@ public class InvitationController {
             
             return ResponseEntity.ok(invitationResources);
             
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
             LOGGER.error("Unexpected error retrieving invitations: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

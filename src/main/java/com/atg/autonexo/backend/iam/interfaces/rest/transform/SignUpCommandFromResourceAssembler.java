@@ -24,7 +24,8 @@ public class SignUpCommandFromResourceAssembler {
             resource.firstName(),
             resource.lastName(),
             resource.phoneNumber(),
-            resource.requestedRole()
+            resource.requestedRole(),
+            resource.invitationCode()
         );
     }
 }

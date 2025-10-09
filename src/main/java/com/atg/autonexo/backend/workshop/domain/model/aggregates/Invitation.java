@@ -98,4 +98,26 @@ public class Invitation extends AuditableAbstractAggregateRoot<Invitation> {
     public boolean belongsToWorkshop(Long workshopId) {
         return workshopId != null && this.workshopId.id().equals(workshopId);
     }
+    
+    /**
+     * Checks if this invitation matches the given code
+     */
+    public boolean hasCode(String code) {
+        return code != null && this.invitationCode.value().equals(code);
+    }
+    
+    /**
+     * Checks if this invitation was delivered to the given email
+     */
+    public boolean isForEmail(String email) {
+        return email != null && this.deliveredTo != null && 
+               this.deliveredTo.value().equalsIgnoreCase(email);
+    }
+    
+    /**
+     * Checks if this invitation matches both code and email
+     */
+    public boolean matchesCodeAndEmail(String code, String email) {
+        return hasCode(code) && isForEmail(email);
+    }
 }

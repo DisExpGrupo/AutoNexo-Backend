@@ -33,4 +33,12 @@ public class WorkshopReference extends AuditableModel {
         this.workshopId = new WorkshopId(workshopId);
     }
     
+    /**
+     * Checks if this reference is for the given workshop ID
+     */
+    public boolean isForWorkshop(Long workshopId) {
+        return workshopId != null && this.workshopId != null && 
+               this.workshopId.id().equals(workshopId);
+    }
+    
 }

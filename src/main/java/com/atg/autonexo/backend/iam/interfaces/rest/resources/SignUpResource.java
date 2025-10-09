@@ -14,6 +14,10 @@ import jakarta.validation.constraints.Size;
  * It includes validation annotations to ensure data integrity.
  * Users must specify which role they are applying for (CAR_OWNER, WORKSHOP_MANAGER, or WORKSHOP_EMPLOYEE).
  * </p>
+ * <p>
+ * For WORKSHOP_EMPLOYEE role, an invitationCode is REQUIRED.
+ * For other roles, invitationCode should be null.
+ * </p>
  */
 public record SignUpResource(
     @NotBlank(message = "Email is required")
@@ -37,7 +41,10 @@ public record SignUpResource(
     String phoneNumber,
     
     @NotNull(message = "Requested role is required")
-    Roles requestedRole
+    Roles requestedRole,
+    
+    // Optional invitation code - REQUIRED for WORKSHOP_EMPLOYEE role
+    String invitationCode
 ) {
     
 }

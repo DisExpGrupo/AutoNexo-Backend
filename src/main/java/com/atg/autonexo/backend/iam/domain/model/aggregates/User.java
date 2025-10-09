@@ -56,7 +56,8 @@ public class User extends AuditableAbstractAggregateRoot<User> {
     private List<Role> roles;
 
     // Relación Opcional con Taller 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // EAGER is required because workshopId is needed in authentication filter
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "workshop_reference_id", nullable = true)
     private WorkshopReference workshopReference;
 

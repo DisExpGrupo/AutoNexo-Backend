@@ -15,6 +15,7 @@ import com.atg.autonexo.backend.workshop.domain.model.valueobjects.BusinessRegis
 import com.atg.autonexo.backend.workshop.domain.model.valueobjects.ServiceTemplateCode;
 import com.atg.autonexo.backend.workshop.domain.services.WorkshopCommandService;
 import com.atg.autonexo.backend.workshop.infrastructure.persistence.jpa.repositories.WorkshopRepository;
+import com.atg.autonexo.backend.workshop.interfaces.acl.WorkshopContextFacade;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,13 @@ public class WorkshopCommandServiceImpl implements WorkshopCommandService {
     private static final Logger LOGGER = LoggerFactory.getLogger(WorkshopCommandServiceImpl.class);
     
     private final WorkshopRepository workshopRepository;
+    private final WorkshopContextFacade workshopContextFacade;
     
-    public WorkshopCommandServiceImpl(WorkshopRepository workshopRepository) {
+    public WorkshopCommandServiceImpl(
+            WorkshopRepository workshopRepository,
+            WorkshopContextFacade workshopContextFacade) {
         this.workshopRepository = workshopRepository;
+        this.workshopContextFacade = workshopContextFacade;
     }
     
     @Override
@@ -45,6 +50,12 @@ public class WorkshopCommandServiceImpl implements WorkshopCommandService {
             // Check if workshop already exists for this owner
             if (workshopRepository.existsByOwnerUserId(command.ownerUserId())) {
                 throw new WorkshopAlreadyExistsException(command.ownerUserId());
+            }
+            
+            // Check if user already has a workshop associated (via ACL)
+            if (workshopContextFacade.userHasWorkshop(command.ownerUserId())) {
+                throw new IllegalArgumentException(
+                    "User already has a workshop associated. A user can only own one workshop.");
             }
             
             // Create business registration if RUC is provided
@@ -65,10 +76,25 @@ public class WorkshopCommandServiceImpl implements WorkshopCommandService {
             Workshop savedWorkshop = workshopRepository.save(workshop);
             LOGGER.info("Workshop created successfully with ID: {}", savedWorkshop.getId());
             
+            // Associate user with workshop in IAM context (via ACL)
+            try {
+                workshopContextFacade.associateUserWithWorkshop(
+                    command.ownerUserId(), 
+                    savedWorkshop.getId());
+                LOGGER.info("User {} successfully associated with workshop {}", 
+                    command.ownerUserId(), savedWorkshop.getId());
+            } catch (Exception e) {
+                // If association fails, delete the created workshop to maintain consistency
+                LOGGER.error("Failed to associate user with workshop. Rolling back workshop creation.");
+                workshopRepository.delete(savedWorkshop);
+                throw new RuntimeException(
+                    "Failed to associate user with workshop: " + e.getMessage(), e);
+            }
+            
             return savedWorkshop;
             
-        } catch (WorkshopAlreadyExistsException e) {
-            LOGGER.error("Workshop already exists for user ID: {}", command.ownerUserId());
+        } catch (WorkshopAlreadyExistsException | IllegalArgumentException e) {
+            LOGGER.error("Workshop creation validation failed: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             LOGGER.error("Error creating workshop: {}", e.getMessage(), e);
