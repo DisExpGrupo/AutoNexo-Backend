@@ -17,7 +17,7 @@ public class VehicleResourceFromEntityAssembler {
     public static VehicleResource toResourceFromEntity(Vehicle vehicle) {
         return new VehicleResource(
             vehicle.getId(),
-            vehicle.getBrand(),
+            vehicle.getBrandId(),
             vehicle.getModel(),
             vehicle.getYear(),
             vehicle.getLicensePlate().value(),

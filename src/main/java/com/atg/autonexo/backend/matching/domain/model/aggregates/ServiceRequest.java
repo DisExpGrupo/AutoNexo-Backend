@@ -74,6 +74,10 @@ public class ServiceRequest extends AuditableAbstractAggregateRoot<ServiceReques
     @JoinColumn(name = "service_request_id")
     private List<com.atg.autonexo.backend.matching.domain.model.entities.Offer> offers = new ArrayList<>();
     
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_request_id")
+    private List<com.atg.autonexo.backend.matching.domain.model.entities.ServiceRequestMatch> matches = new ArrayList<>();
+    
     protected ServiceRequest() {}
     
     /**
@@ -105,6 +109,7 @@ public class ServiceRequest extends AuditableAbstractAggregateRoot<ServiceReques
         this.searchRadius = searchRadius;
         this.status = ServiceRequestStatus.PENDING;
         this.offers = new ArrayList<>();
+        this.matches = new ArrayList<>();
         this.rejectedByWorkshops = new HashSet<>();
     }
     
@@ -170,6 +175,50 @@ public class ServiceRequest extends AuditableAbstractAggregateRoot<ServiceReques
      */
     public boolean isRejectedByWorkshop(WorkshopId workshopId) {
         return rejectedByWorkshops.contains(workshopId.id());
+    }
+    
+    /**
+     * Adds a match to this service request.
+     * 
+     * @param workshopId The matched workshop ID
+     * @param matchScore The match score
+     * @param distanceKm Distance in kilometers
+     * @param matchingServices List of matching services
+     */
+    public void addMatch(WorkshopId workshopId, Double matchScore, Double distanceKm, 
+                        List<ServiceCatalog> matchingServices) {
+        if (workshopId == null) {
+            throw new IllegalArgumentException("WorkshopId cannot be null");
+        }
+        if (status != ServiceRequestStatus.PENDING) {
+            throw new IllegalStateException("Cannot add matches to non-pending request");
+        }
+        
+        // Check if workshop already matched (avoid duplicates)
+        boolean alreadyMatched = this.matches.stream()
+            .anyMatch(m -> m.getWorkshopId().id().equals(workshopId.id()));
+        
+        if (!alreadyMatched) {
+            com.atg.autonexo.backend.matching.domain.model.entities.ServiceRequestMatch match = 
+                new com.atg.autonexo.backend.matching.domain.model.entities.ServiceRequestMatch(
+                    workshopId, matchScore, distanceKm, matchingServices);
+            this.matches.add(match);
+        }
+    }
+    
+    /**
+     * Gets all matches for this request.
+     */
+    public List<com.atg.autonexo.backend.matching.domain.model.entities.ServiceRequestMatch> getMatches() {
+        return new ArrayList<>(matches);
+    }
+    
+    /**
+     * Checks if a workshop is matched to this request.
+     */
+    public boolean isWorkshopMatched(WorkshopId workshopId) {
+        return this.matches.stream()
+            .anyMatch(m -> m.getWorkshopId().id().equals(workshopId.id()));
     }
 }
 

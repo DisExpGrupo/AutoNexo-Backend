@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
 import com.atg.autonexo.backend.notifications.domain.services.EmailService;
+import com.atg.autonexo.backend.shared.domain.model.entities.catalog.VehicleBrand;
+import com.atg.autonexo.backend.shared.infrastructure.persistence.jpa.repositories.VehicleBrandRepository;
 import com.atg.autonexo.backend.vehicle.domain.model.aggregates.Maintenance;
 import com.atg.autonexo.backend.vehicle.domain.model.aggregates.Vehicle;
 import com.atg.autonexo.backend.vehicle.infrastructure.persistence.jpa.repositories.MaintenanceRepository;
@@ -35,16 +37,19 @@ public class MaintenanceReminderService {
     private final MaintenanceRepository maintenanceRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final VehicleBrandRepository vehicleBrandRepository;
     
     public MaintenanceReminderService(
             VehicleRepository vehicleRepository,
             MaintenanceRepository maintenanceRepository,
             UserRepository userRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            VehicleBrandRepository vehicleBrandRepository) {
         this.vehicleRepository = vehicleRepository;
         this.maintenanceRepository = maintenanceRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.vehicleBrandRepository = vehicleBrandRepository;
     }
     
     /**
@@ -163,9 +168,14 @@ public class MaintenanceReminderService {
             String details = String.format("Your vehicle is approaching %d km since last maintenance. Approximately %d km remaining until next service.", 
                 MILEAGE_INTERVAL_KM, remainingKm);
             
+            // Resolve brand name
+            String brandName = vehicleBrandRepository.findById(vehicle.getBrandId())
+                .map(VehicleBrand::getName)
+                .orElse("Unknown Brand");
+            
             emailService.sendMaintenanceReminderEmail(
                 owner.getEmail(),
-                vehicle.getBrand(),
+                brandName,
                 vehicle.getModel(),
                 vehicle.getYear(),
                 "mileage",
@@ -212,9 +222,14 @@ public class MaintenanceReminderService {
             String details = String.format("Your vehicle is due for maintenance in approximately %d days (by %s).", 
                 daysUntilDue, nextMaintenanceDate.toString());
             
+            // Resolve brand name
+            String brandName = vehicleBrandRepository.findById(vehicle.getBrandId())
+                .map(VehicleBrand::getName)
+                .orElse("Unknown Brand");
+            
             emailService.sendMaintenanceReminderEmail(
                 owner.getEmail(),
-                vehicle.getBrand(),
+                brandName,
                 vehicle.getModel(),
                 vehicle.getYear(),
                 "time",

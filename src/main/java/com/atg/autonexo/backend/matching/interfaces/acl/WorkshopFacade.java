@@ -1,10 +1,13 @@
 package com.atg.autonexo.backend.matching.interfaces.acl;
 
 import java.util.List;
+import java.util.Set;
 
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.CapabilityTag;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.Coordinates;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.ServiceCatalog;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;
+import com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionTier;
 
 /**
  * Anti-Corruption Layer facade for Workshop Bounded Context.
@@ -36,6 +39,16 @@ public interface WorkshopFacade {
      * Gets all active workshops.
      */
     List<WorkshopInfo> getAllActiveWorkshops();
+    
+    /**
+     * Gets the capability tags of a workshop.
+     */
+    Set<CapabilityTag> getWorkshopCapabilities(WorkshopId workshopId);
+    
+    /**
+     * Gets the subscription tier of a workshop.
+     */
+    SubscriptionTier getWorkshopSubscriptionTier(WorkshopId workshopId);
     
     /**
      * Workshop information record.

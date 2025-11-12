@@ -1,11 +1,12 @@
 package com.atg.autonexo.backend.workshop.interfaces.rest;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import com.atg.autonexo.backend.shared.infrastructure.multitenancy.WorkshopConte
 import com.atg.autonexo.backend.workshop.application.internal.commandservices.WorkshopCommandServiceImpl;
 import com.atg.autonexo.backend.workshop.application.internal.queryservices.WorkshopQueryServiceImpl;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopAlreadyExistsException;
+import com.atg.autonexo.backend.workshop.domain.exceptions.LocationNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopContextNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Workshop;
@@ -83,13 +85,17 @@ public class WorkshopController {
     private final WorkshopQueryServiceImpl workshopQueryService;
     private final CloudinaryService cloudinaryService;
     
+    private final com.atg.autonexo.backend.matching.infrastructure.persistence.jpa.repositories.ServiceRequestRepository serviceRequestRepository;
+    
     public WorkshopController(
             WorkshopCommandServiceImpl workshopCommandService,
             WorkshopQueryServiceImpl workshopQueryService,
-            CloudinaryService cloudinaryService) {
+            CloudinaryService cloudinaryService,
+            com.atg.autonexo.backend.matching.infrastructure.persistence.jpa.repositories.ServiceRequestRepository serviceRequestRepository) {
         this.workshopCommandService = workshopCommandService;
         this.workshopQueryService = workshopQueryService;
         this.cloudinaryService = cloudinaryService;
+        this.serviceRequestRepository = serviceRequestRepository;
     }
     
     /**
@@ -333,6 +339,148 @@ public class WorkshopController {
             LOGGER.error("Unexpected error adding location: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An unexpected error occurred while adding location");
+        }
+    }
+    
+    /**
+     * Get all locations for my workshop
+     * @return ResponseEntity with list of locations
+     */
+    @GetMapping("/my-workshop/locations")
+    public ResponseEntity<?> getMyWorkshopLocations() {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Getting locations for workshop ID: {}", workshopId);
+            
+            Workshop workshop = workshopQueryService.handle(new GetWorkshopByIdQuery(workshopId))
+                    .orElseThrow(() -> new WorkshopNotFoundException(workshopId));
+            
+            List<LocationResource> locations = workshop.getLocations().stream()
+                    .map(LocationResourceFromEntityAssembler::toResourceFromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(locations);
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.warn("Workshop not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error getting locations: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while getting locations");
+        }
+    }
+    
+    /**
+     * Get a specific location by ID
+     * @param id location ID
+     * @return ResponseEntity with location
+     */
+    @GetMapping("/my-workshop/locations/{id}")
+    public ResponseEntity<?> getLocation(@PathVariable Long id) {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Getting location {} for workshop ID: {}", id, workshopId);
+            
+            Workshop workshop = workshopQueryService.handle(new GetWorkshopByIdQuery(workshopId))
+                    .orElseThrow(() -> new WorkshopNotFoundException(workshopId));
+            
+            Location location = workshop.getLocations().stream()
+                    .filter(loc -> loc.getId().equals(id))
+                    .findFirst()
+                    .orElseThrow(() -> new LocationNotFoundException(id));
+            
+            return ResponseEntity.ok(LocationResourceFromEntityAssembler.toResourceFromEntity(location));
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException | LocationNotFoundException e) {
+            LOGGER.warn("Not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error getting location: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while getting location");
+        }
+    }
+    
+    /**
+     * Update a location
+     * @param id location ID
+     * @param resource updated location data
+     * @return ResponseEntity with updated location
+     */
+    @PutMapping("/my-workshop/locations/{id}")
+    public ResponseEntity<?> updateLocation(@PathVariable Long id, @Valid @RequestBody AddLocationResource resource) {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Updating location {} for workshop ID: {}", id, workshopId);
+            
+            // Build Address and Coordinates from resource
+            com.atg.autonexo.backend.shared.domain.model.valueobjects.Address address = 
+                    new com.atg.autonexo.backend.shared.domain.model.valueobjects.Address(
+                            resource.street(), resource.city(), resource.state(), resource.zip(), resource.country());
+            
+            com.atg.autonexo.backend.shared.domain.model.valueobjects.Coordinates coordinates = 
+                    new com.atg.autonexo.backend.shared.domain.model.valueobjects.Coordinates(
+                            resource.latitude(), resource.longitude());
+            
+            com.atg.autonexo.backend.workshop.domain.model.commands.UpdateLocationCommand command = 
+                    new com.atg.autonexo.backend.workshop.domain.model.commands.UpdateLocationCommand(
+                            workshopId, id, "Location", address, coordinates, false);
+            
+            Location location = workshopCommandService.handle(command);
+            LocationResource locationResource = LocationResourceFromEntityAssembler.toResourceFromEntity(location);
+            
+            LOGGER.info("Location {} updated successfully", id);
+            return ResponseEntity.ok(locationResource);
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException | LocationNotFoundException e) {
+            LOGGER.warn("Not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error updating location: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while updating location");
+        }
+    }
+    
+    /**
+     * Delete a location
+     * @param id location ID
+     * @return ResponseEntity with success message
+     */
+    @DeleteMapping("/my-workshop/locations/{id}")
+    public ResponseEntity<?> deleteLocation(@PathVariable Long id) {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Deleting location {} from workshop ID: {}", id, workshopId);
+            
+            com.atg.autonexo.backend.workshop.domain.model.commands.DeleteLocationCommand command = 
+                    new com.atg.autonexo.backend.workshop.domain.model.commands.DeleteLocationCommand(workshopId, id);
+            
+            workshopCommandService.handle(command);
+            
+            LOGGER.info("Location {} deleted successfully", id);
+            return ResponseEntity.noContent().build();
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException | LocationNotFoundException e) {
+            LOGGER.warn("Not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error deleting location: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while deleting location");
         }
     }
     
@@ -741,86 +889,65 @@ public class WorkshopController {
         }
     }
     
-    // === Catalog Endpoints ===
-    
     /**
-     * Get all available service categories
-     * @return ResponseEntity with list of categories
+     * Get available service requests that match this workshop
+     * @return ResponseEntity with list of available service requests
      */
-    @GetMapping("/catalog/categories")
-    public ResponseEntity<?> getServiceCategories() {
+    @GetMapping("/my-workshop/available-requests")
+    public ResponseEntity<?> getAvailableServiceRequests() {
         try {
-            var categories = com.atg.autonexo.backend.shared.domain.model.valueobjects.ServiceCategory.values();
-            List<Map<String, String>> categoryList = new ArrayList<>();
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Getting available service requests for workshop ID: {}", workshopId);
             
-            for (var category : categories) {
-                categoryList.add(Map.of(
-                    "code", category.name(),
-                    "displayName", category.getDisplayName()
-                ));
-            }
+            // Get pending service requests where this workshop is matched
+            List<com.atg.autonexo.backend.matching.domain.model.aggregates.ServiceRequest> serviceRequests = 
+                    serviceRequestRepository.findByMatchedWorkshopAndStatus(
+                            workshopId, 
+                            com.atg.autonexo.backend.matching.domain.model.valueobjects.ServiceRequestStatus.PENDING);
             
-            return ResponseEntity.ok(categoryList);
+            // Convert to resources with match information
+            List<Map<String, Object>> resources = serviceRequests.stream()
+                    .map(sr -> {
+                        Map<String, Object> resource = new HashMap<>();
+                        resource.put("id", sr.getId());
+                        resource.put("vehicleId", sr.getVehicleId());
+                        resource.put("requestedServices", sr.getRequestedServices().stream()
+                                .map(s -> s.getDisplayName())
+                                .collect(Collectors.toList()));
+                        resource.put("description", sr.getDescription());
+                        resource.put("userLocation", Map.of(
+                                "latitude", sr.getUserLocation().latitude(),
+                                "longitude", sr.getUserLocation().longitude()
+                        ));
+                        resource.put("status", sr.getStatus().name());
+                        resource.put("createdAt", sr.getCreatedAt());
+                        
+                        // Find match information for this workshop
+                        sr.getMatches().stream()
+                                .filter(m -> m.getWorkshopId().id().equals(workshopId))
+                                .findFirst()
+                                .ifPresent(match -> {
+                                    resource.put("matchScore", match.getMatchScore());
+                                    resource.put("distanceKm", match.getDistanceKm());
+                                    resource.put("matchingServices", match.getMatchingServices().stream()
+                                            .map(s -> s.getDisplayName())
+                                            .collect(Collectors.toList()));
+                                });
+                        
+                        return resource;
+                    })
+                    .collect(Collectors.toList());
             
+            LOGGER.info("Found {} available service requests for workshop {}", resources.size(), workshopId);
+            return ResponseEntity.ok(resources);
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
-            LOGGER.error("Error retrieving service categories: {}", e.getMessage(), e);
+            LOGGER.error("Unexpected error getting available requests: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred while retrieving service categories");
-        }
-    }
-    
-    /**
-     * Get all available services in the catalog
-     * @return ResponseEntity with list of services
-     */
-    @GetMapping("/catalog/services")
-    public ResponseEntity<?> getServiceCatalog() {
-        try {
-            var services = com.atg.autonexo.backend.shared.domain.model.valueobjects.ServiceCatalog.values();
-            List<Map<String, Object>> serviceList = new ArrayList<>();
-            
-            for (var service : services) {
-                serviceList.add(Map.of(
-                    "code", service.name(),
-                    "displayName", service.getDisplayName(),
-                    "category", service.getCategory().name(),
-                    "categoryDisplayName", service.getCategory().getDisplayName()
-                ));
-            }
-            
-            return ResponseEntity.ok(serviceList);
-            
-        } catch (Exception e) {
-            LOGGER.error("Error retrieving service catalog: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred while retrieving service catalog");
-        }
-    }
-    
-    /**
-     * Get all available capability tags
-     * @return ResponseEntity with list of capability tags
-     */
-    @GetMapping("/catalog/capability-tags")
-    public ResponseEntity<?> getCapabilityTags() {
-        try {
-            var tags = com.atg.autonexo.backend.shared.domain.model.valueobjects.CapabilityTag.values();
-            List<Map<String, String>> tagList = new ArrayList<>();
-            
-            for (var tag : tags) {
-                tagList.add(Map.of(
-                    "code", tag.name(),
-                    "displayName", tag.getDisplayName(),
-                    "category", tag.getCategory().name()
-                ));
-            }
-            
-            return ResponseEntity.ok(tagList);
-            
-        } catch (Exception e) {
-            LOGGER.error("Error retrieving capability tags: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred while retrieving capability tags");
+                    .body("An unexpected error occurred while getting available requests");
         }
     }
     

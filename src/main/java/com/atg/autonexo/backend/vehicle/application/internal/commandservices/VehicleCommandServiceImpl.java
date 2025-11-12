@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.atg.autonexo.backend.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
+import com.atg.autonexo.backend.shared.domain.model.entities.catalog.VehicleBrand;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.UserId;
+import com.atg.autonexo.backend.shared.infrastructure.persistence.jpa.repositories.VehicleBrandRepository;
 import com.atg.autonexo.backend.vehicle.domain.exceptions.OnlyPrimaryOwnerException;
 import com.atg.autonexo.backend.vehicle.domain.exceptions.VehicleNotFoundException;
 import com.atg.autonexo.backend.vehicle.domain.model.aggregates.Vehicle;
@@ -34,18 +36,30 @@ public class VehicleCommandServiceImpl implements VehicleCommandService {
     
     private final VehicleRepository vehicleRepository;
     private final VehicleOwnershipRepository ownershipRepository;
+    private final VehicleBrandRepository vehicleBrandRepository;
     
     public VehicleCommandServiceImpl(
             VehicleRepository vehicleRepository,
-            VehicleOwnershipRepository ownershipRepository) {
+            VehicleOwnershipRepository ownershipRepository,
+            VehicleBrandRepository vehicleBrandRepository) {
         this.vehicleRepository = vehicleRepository;
         this.ownershipRepository = ownershipRepository;
+        this.vehicleBrandRepository = vehicleBrandRepository;
     }
     
     @Override
     public Vehicle handle(CreateVehicleCommand command) {
         Long userId = getCurrentUserId();
-        LOGGER.info("Creating vehicle: {} {} {} for user {}", command.brand(), command.model(), command.year(), userId);
+        LOGGER.info("Creating vehicle with brandId {} model {} year {} for user {}", 
+            command.brandId(), command.model(), command.year(), userId);
+        
+        // Validate that brand exists and is active
+        VehicleBrand brand = vehicleBrandRepository.findById(command.brandId())
+            .filter(VehicleBrand::isActive)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Vehicle brand not found or inactive with ID: " + command.brandId()));
+        
+        LOGGER.debug("Brand validated: {}", brand.getName());
         
         // Check if license plate already exists
         if (vehicleRepository.existsByLicensePlate(command.licensePlate().value())) {
@@ -55,7 +69,7 @@ public class VehicleCommandServiceImpl implements VehicleCommandService {
         // Create vehicle with primary owner
         UserId primaryOwnerId = new UserId(userId);
         Vehicle vehicle = new Vehicle(
-            command.brand(),
+            command.brandId(),
             command.model(),
             command.year(),
             command.licensePlate(),

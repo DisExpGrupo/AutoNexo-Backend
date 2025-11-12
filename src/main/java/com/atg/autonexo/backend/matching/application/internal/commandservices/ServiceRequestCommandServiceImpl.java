@@ -1,5 +1,8 @@
 package com.atg.autonexo.backend.matching.application.internal.commandservices;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -11,6 +14,7 @@ import com.atg.autonexo.backend.matching.domain.model.aggregates.ServiceRequest;
 import com.atg.autonexo.backend.matching.domain.model.commands.CancelServiceRequestCommand;
 import com.atg.autonexo.backend.matching.domain.model.commands.CreateServiceRequestCommand;
 import com.atg.autonexo.backend.matching.domain.model.commands.RejectServiceRequestCommand;
+import com.atg.autonexo.backend.matching.domain.services.MatchingService;
 import com.atg.autonexo.backend.matching.domain.services.ServiceRequestCommandService;
 import com.atg.autonexo.backend.matching.infrastructure.persistence.jpa.repositories.ServiceRequestRepository;
 
@@ -24,9 +28,13 @@ public class ServiceRequestCommandServiceImpl implements ServiceRequestCommandSe
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceRequestCommandServiceImpl.class);
     
     private final ServiceRequestRepository serviceRequestRepository;
+    private final MatchingService matchingService;
     
-    public ServiceRequestCommandServiceImpl(ServiceRequestRepository serviceRequestRepository) {
+    public ServiceRequestCommandServiceImpl(
+            ServiceRequestRepository serviceRequestRepository,
+            MatchingService matchingService) {
         this.serviceRequestRepository = serviceRequestRepository;
+        this.matchingService = matchingService;
     }
     
     @Override
@@ -42,8 +50,41 @@ public class ServiceRequestCommandServiceImpl implements ServiceRequestCommandSe
             command.searchRadius()
         );
         
+        // Save the request first to get an ID
         ServiceRequest saved = serviceRequestRepository.save(serviceRequest);
         LOGGER.info("Service request created with ID: {}", saved.getId());
+        
+        // Perform automatic matching
+        try {
+            LOGGER.info("Starting automatic matching for service request {}", saved.getId());
+            List<MatchingService.WorkshopMatchResult> matches = matchingService.findMatchingWorkshops(
+                command.userLocation(),
+                command.searchRadius().valueInKm(),
+                command.requestedServices(),
+                Optional.empty() // No minimum rating filter
+            );
+            
+            LOGGER.info("Found {} matching workshops for request {}", matches.size(), saved.getId());
+            
+            // Add each match to the service request
+            for (MatchingService.WorkshopMatchResult match : matches) {
+                saved.addMatch(
+                    match.workshopId(),
+                    match.matchScore(),
+                    match.distanceKm(),
+                    match.matchingServices()
+                );
+            }
+            
+            // Save the request with matches
+            saved = serviceRequestRepository.save(saved);
+            LOGGER.info("Service request {} matched with {} workshops", saved.getId(), matches.size());
+            
+        } catch (Exception e) {
+            LOGGER.error("Error during automatic matching for request {}: {}", saved.getId(), e.getMessage(), e);
+            // Continue - request is still valid even if matching fails
+        }
+        
         return saved;
     }
     

@@ -1,7 +1,9 @@
 package com.atg.autonexo.backend.matching.application.acl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.atg.autonexo.backend.matching.interfaces.acl.WorkshopFacade;
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.CapabilityTag;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.Coordinates;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.ServiceCatalog;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;
@@ -17,6 +20,7 @@ import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopNotFoundExcep
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Workshop;
 import com.atg.autonexo.backend.workshop.domain.model.entities.Location;
 import com.atg.autonexo.backend.workshop.domain.model.entities.ServiceTemplate;
+import com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionTier;
 import com.atg.autonexo.backend.workshop.infrastructure.persistence.jpa.repositories.WorkshopRepository;
 
 /**
@@ -131,6 +135,23 @@ public class WorkshopFacadeImpl implements WorkshopFacade {
                 );
             })
             .collect(Collectors.toList());
+    }
+    
+    @Override
+    public Set<CapabilityTag> getWorkshopCapabilities(WorkshopId workshopId) {
+        Workshop workshop = workshopRepository.findById(workshopId.id())
+            .orElseThrow(() -> new WorkshopNotFoundException(workshopId.id()));
+        
+        Set<CapabilityTag> capabilities = workshop.getCapabilityTags();
+        return capabilities != null ? new HashSet<>(capabilities) : new HashSet<>();
+    }
+    
+    @Override
+    public SubscriptionTier getWorkshopSubscriptionTier(WorkshopId workshopId) {
+        Workshop workshop = workshopRepository.findById(workshopId.id())
+            .orElseThrow(() -> new WorkshopNotFoundException(workshopId.id()));
+        
+        return workshop.getSubscriptionTier();
     }
 }
 

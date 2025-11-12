@@ -8,7 +8,7 @@ import com.atg.autonexo.backend.vehicle.domain.model.valueobjects.VIN;
  * Command to create a new vehicle.
  */
 public record CreateVehicleCommand(
-    String brand,
+    Long brandId,
     String model,
     Integer year,
     LicensePlate licensePlate,
@@ -17,8 +17,8 @@ public record CreateVehicleCommand(
     Mileage initialMileage
 ) {
     public CreateVehicleCommand {
-        if (brand == null || brand.trim().isEmpty()) {
-            throw new IllegalArgumentException("Brand cannot be null or empty");
+        if (brandId == null) {
+            throw new IllegalArgumentException("Brand ID cannot be null");
         }
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("Model cannot be null or empty");

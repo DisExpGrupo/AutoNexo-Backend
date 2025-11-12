@@ -56,4 +56,14 @@ public interface WorkshopCommandService {
      * Updates workshop subscription
      */
     Workshop handle(UpdateSubscriptionCommand command);
+    
+    /**
+     * Updates a location
+     */
+    Location handle(UpdateLocationCommand command);
+    
+    /**
+     * Deletes/deactivates a location
+     */
+    void handle(DeleteLocationCommand command);
 }

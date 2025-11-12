@@ -4,6 +4,7 @@ import com.atg.autonexo.backend.shared.domain.model.valueobjects.Address;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.Coordinates;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.Money;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.UserId;
+import com.atg.autonexo.backend.workshop.domain.exceptions.LocationNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopAlreadyExistsException;
 import com.atg.autonexo.backend.workshop.domain.exceptions.WorkshopNotFoundException;
 import com.atg.autonexo.backend.workshop.domain.model.aggregates.Workshop;
@@ -359,6 +360,50 @@ public class WorkshopCommandServiceImpl implements WorkshopCommandService {
         } catch (Exception e) {
             LOGGER.error("Error updating subscription: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update subscription", e);
+        }
+    }
+    
+    @Override
+    public Location handle(UpdateLocationCommand command) {
+        LOGGER.info("Updating location {} for workshop {}", command.locationId(), command.workshopId());
+        
+        try {
+            Workshop workshop = workshopRepository.findById(command.workshopId())
+                .orElseThrow(() -> new WorkshopNotFoundException(command.workshopId()));
+            
+            Location location = workshop.getLocations().stream()
+                .filter(loc -> loc.getId().equals(command.locationId()))
+                .findFirst()
+                .orElseThrow(() -> new LocationNotFoundException(command.locationId()));
+            
+            location.update(command.name(), command.address(), command.coordinates(), command.isPrimary());
+            
+            workshopRepository.save(workshop);
+            LOGGER.info("Location {} updated successfully", command.locationId());
+            
+            return location;
+        } catch (Exception e) {
+            LOGGER.error("Error updating location: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update location", e);
+        }
+    }
+    
+    @Override
+    public void handle(DeleteLocationCommand command) {
+        LOGGER.info("Deleting location {} from workshop {}", command.locationId(), command.workshopId());
+        
+        try {
+            Workshop workshop = workshopRepository.findById(command.workshopId())
+                .orElseThrow(() -> new WorkshopNotFoundException(command.workshopId()));
+            
+            workshop.removeLocation(command.locationId());
+            
+            workshopRepository.save(workshop);
+            LOGGER.info("Location {} deleted successfully", command.locationId());
+            
+        } catch (Exception e) {
+            LOGGER.error("Error deleting location: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to delete location", e);
         }
     }
 }

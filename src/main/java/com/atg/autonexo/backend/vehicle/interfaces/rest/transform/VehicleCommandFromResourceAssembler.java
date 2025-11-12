@@ -22,7 +22,7 @@ public class VehicleCommandFromResourceAssembler {
     
     public static CreateVehicleCommand toCommandFromResource(CreateVehicleResource resource) {
         return new CreateVehicleCommand(
-            resource.brand(),
+            resource.brandId(),
             resource.model(),
             resource.year(),
             new LicensePlate(resource.licensePlate()),

@@ -26,8 +26,8 @@ import lombok.Setter;
 @Setter
 public class Vehicle extends AuditableAbstractAggregateRoot<Vehicle> {
     
-    @Column(nullable = false, length = 100)
-    private String brand;
+    @Column(nullable = false)
+    private Long brandId;
     
     @Column(nullable = false, length = 100)
     private String model;
@@ -64,10 +64,10 @@ public class Vehicle extends AuditableAbstractAggregateRoot<Vehicle> {
     /**
      * Creates a new vehicle with the primary owner.
      */
-    public Vehicle(String brand, String model, Integer year, LicensePlate licensePlate, 
+    public Vehicle(Long brandId, String model, Integer year, LicensePlate licensePlate, 
                    VIN vin, String color, Mileage initialMileage, UserId primaryOwnerId) {
-        if (brand == null || brand.trim().isEmpty()) {
-            throw new IllegalArgumentException("Brand cannot be null or empty");
+        if (brandId == null) {
+            throw new IllegalArgumentException("Brand ID cannot be null");
         }
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("Model cannot be null or empty");
@@ -85,7 +85,7 @@ public class Vehicle extends AuditableAbstractAggregateRoot<Vehicle> {
             throw new IllegalArgumentException("Primary owner ID cannot be null");
         }
         
-        this.brand = brand;
+        this.brandId = brandId;
         this.model = model;
         this.year = year;
         this.licensePlate = licensePlate;
@@ -170,10 +170,11 @@ public class Vehicle extends AuditableAbstractAggregateRoot<Vehicle> {
     }
     
     /**
-     * Gets the full vehicle name (brand model year).
+     * Gets the full vehicle name (model year).
+     * Note: Brand name must be fetched separately using brandId.
      */
     public String getFullName() {
-        return String.format("%s %s %d", brand, model, year);
+        return String.format("%s %d", model, year);
     }
 }
 

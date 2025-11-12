@@ -9,9 +9,8 @@ import jakarta.validation.constraints.Size;
  * Resource for creating a new vehicle.
  */
 public record CreateVehicleResource(
-    @NotBlank(message = "Brand is required")
-    @Size(max = 100, message = "Brand must not exceed 100 characters")
-    String brand,
+    @NotNull(message = "Brand ID is required")
+    Long brandId,
     
     @NotBlank(message = "Model is required")
     @Size(max = 100, message = "Model must not exceed 100 characters")

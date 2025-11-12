@@ -44,5 +44,15 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     @Query("SELECT DISTINCT sr FROM ServiceRequest sr JOIN sr.offers o " +
            "WHERE o.workshopId.id = :workshopId")
     List<ServiceRequest> findByWorkshopOffers(@Param("workshopId") Long workshopId);
+    
+    /**
+     * Find pending service requests where a workshop is matched.
+     */
+    @Query("SELECT DISTINCT sr FROM ServiceRequest sr JOIN sr.matches m " +
+           "WHERE m.workshopId.id = :workshopId AND sr.status = :status")
+    List<ServiceRequest> findByMatchedWorkshopAndStatus(
+        @Param("workshopId") Long workshopId,
+        @Param("status") ServiceRequestStatus status
+    );
 }
 

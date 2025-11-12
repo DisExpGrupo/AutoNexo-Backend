@@ -119,6 +119,11 @@ public class WebSecurityConfiguration {
                                 "/api/v1/users/signup", // User registration
                                 "/api/v1/users/signin", // User authentication
                                 "/api/v1/users/available-roles", // Available roles for registration
+                                "/api/v1/workshops/catalog/**", // Public catalog endpoints
+                                "/api/v1/workshops/search", // Public workshop search
+                                "/api/v1/workshops/*/public", // Public workshop profiles
+                                "/api/v1/workshops/*/services",
+                                "/api/v1/catalog/**", // Public catalog endpoints
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",

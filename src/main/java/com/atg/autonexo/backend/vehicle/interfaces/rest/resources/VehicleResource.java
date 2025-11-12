@@ -7,7 +7,7 @@ import java.util.List;
  */
 public record VehicleResource(
     Long id,
-    String brand,
+    Long brandId,
     String model,
     Integer year,
     String licensePlate,

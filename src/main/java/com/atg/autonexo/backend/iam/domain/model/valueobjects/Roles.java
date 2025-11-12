@@ -6,5 +6,6 @@ package com.atg.autonexo.backend.iam.domain.model.valueobjects;
 public enum Roles {
     CAR_OWNER,
     WORKSHOP_MANAGER,
-    WORKSHOP_EMPLOYEE
+    WORKSHOP_EMPLOYEE,
+    ADMIN
 }

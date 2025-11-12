@@ -3,6 +3,11 @@ package com.atg.autonexo.backend.matching.interfaces.rest.transform;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import java.util.ArrayList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.atg.autonexo.backend.matching.domain.model.commands.CancelServiceRequestCommand;
 import com.atg.autonexo.backend.matching.domain.model.commands.CreateServiceRequestCommand;
 import com.atg.autonexo.backend.matching.domain.model.commands.RejectServiceRequestCommand;
@@ -18,10 +23,15 @@ import com.atg.autonexo.backend.matching.domain.model.valueobjects.SearchRadius;
  */
 public class ServiceRequestCommandFromResourceAssembler {
     
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceRequestCommandFromResourceAssembler.class);
+    
     public static CreateServiceRequestCommand toCommandFromResource(CreateServiceRequestResource resource, Long userId) {
-        List<ServiceCatalog> requestedServices = resource.requestedServices().stream()
-            .map(ServiceCatalog::fromString)
-            .collect(Collectors.toList());
+        List<ServiceCatalog> requestedServices = new ArrayList<>();
+        LOGGER.info("Requested services: {}", resource);
+        resource.requestedServices().forEach(service -> {
+            LOGGER.info("Service: {}", service);
+            requestedServices.add(ServiceCatalog.fromString(service));
+        });
         
         return new CreateServiceRequestCommand(
             new UserId(userId),

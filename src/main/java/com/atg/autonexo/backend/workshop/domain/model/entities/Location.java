@@ -91,5 +91,19 @@ public class Location extends AuditableModel {
     public void updateCoordinates(Coordinates newCoordinates) {
         this.coordinates = newCoordinates;
     }
+    
+    /**
+     * Updates location details
+     */
+    public void update(String name, Address address, Coordinates coordinates, boolean isPrimary) {
+        // Note: name and isPrimary are currently not stored in Location entity
+        // This method is here for compatibility with UpdateLocationCommand
+        if (address != null) {
+            this.address = address;
+        }
+        if (coordinates != null) {
+            this.coordinates = coordinates;
+        }
+    }
 }
 

@@ -176,6 +176,20 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
     
+    @Override
+    public void sendServiceRequestMatchNotification(String to, Long serviceRequestId, String services, Double distanceKm) {
+        String subject = "Nueva Solicitud de Servicio Disponible - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("serviceRequestId", serviceRequestId.toString());
+        variables.put("services", services);
+        variables.put("distance", String.format("%.1f km", distanceKm));
+        variables.put("requestUrl", emailProperties.getBaseUrl() + "/workshops/requests/" + serviceRequestId);
+        
+        String htmlBody = templateService.processTemplate("service-request-match", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
     /**
      * Sends an HTML email using JavaMailSender.
      */

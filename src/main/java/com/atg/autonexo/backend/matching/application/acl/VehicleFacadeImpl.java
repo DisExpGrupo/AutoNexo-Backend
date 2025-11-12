@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.atg.autonexo.backend.matching.interfaces.acl.VehicleFacade;
+import com.atg.autonexo.backend.shared.domain.model.entities.catalog.VehicleBrand;
 import com.atg.autonexo.backend.shared.domain.model.valueobjects.UserId;
+import com.atg.autonexo.backend.shared.infrastructure.persistence.jpa.repositories.VehicleBrandRepository;
 import com.atg.autonexo.backend.vehicle.domain.exceptions.VehicleNotFoundException;
 import com.atg.autonexo.backend.vehicle.domain.model.aggregates.Vehicle;
 import com.atg.autonexo.backend.vehicle.infrastructure.persistence.jpa.repositories.VehicleOwnershipRepository;
@@ -24,12 +26,15 @@ public class VehicleFacadeImpl implements VehicleFacade {
     
     private final VehicleRepository vehicleRepository;
     private final VehicleOwnershipRepository ownershipRepository;
+    private final VehicleBrandRepository vehicleBrandRepository;
     
     public VehicleFacadeImpl(
             VehicleRepository vehicleRepository,
-            VehicleOwnershipRepository ownershipRepository) {
+            VehicleOwnershipRepository ownershipRepository,
+            VehicleBrandRepository vehicleBrandRepository) {
         this.vehicleRepository = vehicleRepository;
         this.ownershipRepository = ownershipRepository;
+        this.vehicleBrandRepository = vehicleBrandRepository;
     }
     
     @Override
@@ -42,9 +47,14 @@ public class VehicleFacadeImpl implements VehicleFacade {
             throw new SecurityException("User does not have access to this vehicle");
         }
         
+        // Resolve brand name from brandId
+        String brandName = vehicleBrandRepository.findById(vehicle.getBrandId())
+            .map(VehicleBrand::getName)
+            .orElse("Unknown Brand");
+        
         return new VehicleInfo(
             vehicle.getId(),
-            vehicle.getBrand(),
+            brandName,
             vehicle.getModel(),
             vehicle.getYear(),
             vehicle.getPrimaryOwnerId()

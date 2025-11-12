@@ -98,5 +98,15 @@ public interface EmailService {
      * @param isUser true if sending to user, false if sending to workshop
      */
     void sendUpcomingServiceEmail(String to, Long serviceBookingId, java.time.LocalDateTime scheduledDate, boolean isUser);
+    
+    /**
+     * Sends a notification to a workshop when they are matched to a new service request.
+     * Only sent to PREMIUM tier workshops.
+     * @param to recipient email address (workshop)
+     * @param serviceRequestId the service request ID
+     * @param services list of services requested (display names)
+     * @param distanceKm distance from workshop to request location
+     */
+    void sendServiceRequestMatchNotification(String to, Long serviceRequestId, String services, Double distanceKm);
 }
 
