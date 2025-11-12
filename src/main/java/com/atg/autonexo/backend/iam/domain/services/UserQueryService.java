@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
 import com.atg.autonexo.backend.iam.domain.model.queries.GetAllUsersQuery;
+import com.atg.autonexo.backend.iam.domain.model.queries.GetCurrentUserQuery;
 import com.atg.autonexo.backend.iam.domain.model.queries.GetUserByEmailQuery;
 
 /**
@@ -25,4 +26,11 @@ public interface UserQueryService {
      * @return A list of all User aggregates.
      */
     List<User> handle(GetAllUsersQuery query);
+    
+    /**
+     * Handles the query to get the current authenticated user.
+     * @param query The query containing the user ID.
+     * @return An Optional containing the User aggregate if found.
+     */
+    Optional<User> handle(GetCurrentUserQuery query);
 }

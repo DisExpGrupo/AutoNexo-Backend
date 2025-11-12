@@ -42,6 +42,7 @@ import com.atg.autonexo.backend.workshop.domain.model.entities.Location;
 import com.atg.autonexo.backend.workshop.domain.model.entities.ServiceTemplate;
 import com.atg.autonexo.backend.workshop.domain.model.entities.StaffMember;
 import com.atg.autonexo.backend.workshop.domain.model.queries.GetAllWorkshopsQuery;
+import com.atg.autonexo.backend.workshop.domain.model.commands.UpdateSubscriptionCommand;
 import com.atg.autonexo.backend.workshop.domain.model.queries.GetWorkshopByIdQuery;
 import com.atg.autonexo.backend.workshop.domain.model.queries.GetWorkshopByOwnerQuery;
 import com.atg.autonexo.backend.workshop.domain.model.queries.GetWorkshopsByCapabilityTagQuery;
@@ -51,7 +52,9 @@ import com.atg.autonexo.backend.workshop.interfaces.rest.resources.AddStaffMembe
 import com.atg.autonexo.backend.workshop.interfaces.rest.resources.CreateWorkshopResource;
 import com.atg.autonexo.backend.workshop.interfaces.rest.resources.LocationResource;
 import com.atg.autonexo.backend.workshop.interfaces.rest.resources.ServiceTemplateResource;
+import com.atg.autonexo.backend.workshop.interfaces.rest.resources.SubscriptionResource;
 import com.atg.autonexo.backend.workshop.interfaces.rest.resources.UpdateWorkshopResource;
+import com.atg.autonexo.backend.workshop.interfaces.rest.resources.UpdateSubscriptionResource;
 import com.atg.autonexo.backend.workshop.interfaces.rest.resources.WorkshopResource;
 import com.atg.autonexo.backend.workshop.interfaces.rest.transform.AddLocationCommandFromResourceAssembler;
 import com.atg.autonexo.backend.workshop.interfaces.rest.transform.AddServiceTemplateCommandFromResourceAssembler;
@@ -818,6 +821,90 @@ public class WorkshopController {
             LOGGER.error("Error retrieving capability tags: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An unexpected error occurred while retrieving capability tags");
+        }
+    }
+    
+    /**
+     * Get subscription status for my workshop
+     * @return ResponseEntity with subscription information
+     */
+    @GetMapping("/my-workshop/subscription")
+    public ResponseEntity<?> getMyWorkshopSubscription() {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.debug("Processing get subscription request for workshop ID: {}", workshopId);
+            
+            Optional<Workshop> workshopOptional = workshopQueryService.handle(new GetWorkshopByIdQuery(workshopId));
+            
+            if (workshopOptional.isEmpty()) {
+                throw new WorkshopNotFoundException(workshopId);
+            }
+            
+            Workshop workshop = workshopOptional.get();
+            SubscriptionResource subscriptionResource = new SubscriptionResource(
+                workshop.getSubscriptionStatus(),
+                workshop.getSubscriptionTier(),
+                workshop.getSubscriptionExpiresAt(),
+                workshop.isSubscriptionActive(),
+                workshop.canAccessPremiumFeatures()
+            );
+            
+            return ResponseEntity.ok(subscriptionResource);
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.warn("Workshop not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error retrieving subscription: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred while retrieving subscription");
+        }
+    }
+    
+    /**
+     * Update subscription for my workshop (called by Payment BC)
+     * @param resource the subscription update data
+     * @return ResponseEntity with updated subscription information
+     */
+    @PutMapping("/my-workshop/subscription")
+    public ResponseEntity<?> updateMyWorkshopSubscription(@Valid @RequestBody UpdateSubscriptionResource resource) {
+        try {
+            Long workshopId = getWorkshopIdFromContext();
+            LOGGER.info("Processing update subscription request for workshop ID: {}", workshopId);
+            
+            UpdateSubscriptionCommand command = new UpdateSubscriptionCommand(
+                workshopId,
+                resource.status(),
+                resource.tier(),
+                resource.expiresAt()
+            );
+            
+            Workshop workshop = workshopCommandService.handle(command);
+            
+            SubscriptionResource subscriptionResource = new SubscriptionResource(
+                workshop.getSubscriptionStatus(),
+                workshop.getSubscriptionTier(),
+                workshop.getSubscriptionExpiresAt(),
+                workshop.isSubscriptionActive(),
+                workshop.canAccessPremiumFeatures()
+            );
+            
+            LOGGER.info("Subscription updated successfully for workshop: {}", workshopId);
+            return ResponseEntity.ok(subscriptionResource);
+            
+        } catch (WorkshopContextNotFoundException e) {
+            LOGGER.warn("Workshop context not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.warn("Update subscription failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error during subscription update: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred during subscription update");
         }
     }
 }

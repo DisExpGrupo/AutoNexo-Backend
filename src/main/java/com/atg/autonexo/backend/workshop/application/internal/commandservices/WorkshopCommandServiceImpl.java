@@ -333,5 +333,33 @@ public class WorkshopCommandServiceImpl implements WorkshopCommandService {
             throw new RuntimeException("Failed to update capability tags", e);
         }
     }
+    
+    @Override
+    public Workshop handle(UpdateSubscriptionCommand command) {
+        LOGGER.info("Updating subscription for workshop ID: {}", command.workshopId());
+        
+        try {
+            Workshop workshop = workshopRepository.findById(command.workshopId())
+                .orElseThrow(() -> new WorkshopNotFoundException(command.workshopId()));
+            
+            workshop.updateSubscription(
+                command.status(),
+                command.tier(),
+                command.expiresAt()
+            );
+            
+            Workshop savedWorkshop = workshopRepository.save(workshop);
+            LOGGER.info("Subscription updated successfully for workshop: {}", command.workshopId());
+            
+            return savedWorkshop;
+            
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.error("Workshop not found: {}", command.workshopId());
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("Error updating subscription: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update subscription", e);
+        }
+    }
 }
 

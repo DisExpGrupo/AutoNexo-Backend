@@ -1,6 +1,8 @@
 package com.atg.autonexo.backend.iam.application.internal.commandservices;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,17 +10,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.atg.autonexo.backend.iam.application.internal.outboundservices.hashing.HashingService;
+import com.atg.autonexo.backend.iam.application.internal.outboundservices.notifications.NotificationService;
 import com.atg.autonexo.backend.iam.application.internal.outboundservices.tokens.TokenService;
 import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
+import com.atg.autonexo.backend.iam.domain.model.commands.ChangePasswordCommand;
+import com.atg.autonexo.backend.iam.domain.model.commands.DeactivateUserCommand;
 import com.atg.autonexo.backend.iam.domain.model.commands.SignInCommand;
 import com.atg.autonexo.backend.iam.domain.model.commands.SignUpCommand;
+import com.atg.autonexo.backend.iam.domain.model.commands.UpdateUserProfileCommand;
+import com.atg.autonexo.backend.iam.domain.model.entities.EmailVerificationToken;
 import com.atg.autonexo.backend.iam.domain.model.entities.Role;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.InvalidCredentialsException;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.UserAccountDeactivatedException;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.UserAlreadyExistsException;
+import com.atg.autonexo.backend.iam.domain.model.exceptions.UserNotFoundException;
 import com.atg.autonexo.backend.iam.domain.model.valueobjects.Roles;
 import com.atg.autonexo.backend.iam.domain.services.RoleValidationService;
 import com.atg.autonexo.backend.iam.domain.services.UserCommandService;
+import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.EmailVerificationTokenRepository;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.RoleRepository;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
 import com.atg.autonexo.backend.workshop.interfaces.acl.WorkshopContextFacade;
@@ -36,6 +45,7 @@ import com.atg.autonexo.backend.workshop.interfaces.acl.WorkshopContextFacade;
 public class UserCommandServiceImpl implements UserCommandService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserCommandServiceImpl.class);
+    private static final int VERIFICATION_TOKEN_EXPIRATION_HOURS = 72; // 3 days
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -43,6 +53,8 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final TokenService tokenService;
     private final RoleValidationService roleValidationService;
     private final WorkshopContextFacade workshopContextFacade;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final NotificationService notificationService;
 
     public UserCommandServiceImpl(
             UserRepository userRepository,
@@ -50,13 +62,17 @@ public class UserCommandServiceImpl implements UserCommandService {
             HashingService hashingService,
             TokenService tokenService,
             RoleValidationService roleValidationService,
-            WorkshopContextFacade workshopContextFacade) {
+            WorkshopContextFacade workshopContextFacade,
+            EmailVerificationTokenRepository emailVerificationTokenRepository,
+            NotificationService notificationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.hashingService = hashingService;
         this.tokenService = tokenService;
         this.roleValidationService = roleValidationService;
         this.workshopContextFacade = workshopContextFacade;
+        this.emailVerificationTokenRepository = emailVerificationTokenRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -96,6 +112,17 @@ public class UserCommandServiceImpl implements UserCommandService {
         // Save user
         User savedUser = userRepository.save(user);
         LOGGER.info("User registered successfully with ID: {}", savedUser.getId());
+        
+        // Generate email verification token
+        String verificationToken = UUID.randomUUID().toString();
+        LocalDateTime expiresAt = LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRATION_HOURS);
+        EmailVerificationToken emailVerificationToken = new EmailVerificationToken(
+            verificationToken, savedUser, expiresAt);
+        emailVerificationTokenRepository.save(emailVerificationToken);
+        
+        // Send verification email (will be handled by Notifications BC)
+        notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
+        LOGGER.info("Email verification token generated for user: {}", savedUser.getId());
         
         // Process invitation if user is WORKSHOP_EMPLOYEE and has invitation code
         if (command.requestedRole() == Roles.WORKSHOP_EMPLOYEE && 
@@ -161,5 +188,78 @@ public class UserCommandServiceImpl implements UserCommandService {
         Long workshopId = user.getWorkshopReference() != null ? user.getWorkshopReference().getWorkshopId().id() : null;
         
         return tokenService.generateToken(user.getId(), userRole, workshopId);
+    }
+    
+    @Override
+    public void handle(UpdateUserProfileCommand command) {
+        LOGGER.info("Processing UpdateUserProfile command for user ID: {}", command.userId());
+        
+        User user = userRepository.findById(command.userId())
+            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
+        
+        if (!user.getActive()) {
+            throw new UserAccountDeactivatedException(user.getEmail());
+        }
+        
+        // Update fields if provided
+        if (command.firstName() != null) {
+            user.setFirstName(command.firstName());
+        }
+        if (command.lastName() != null) {
+            user.setLastName(command.lastName());
+        }
+        if (command.phoneNumber() != null) {
+            user.setPhoneNumber(command.phoneNumber());
+        }
+        
+        userRepository.save(user);
+        LOGGER.info("User profile updated successfully for user ID: {}", command.userId());
+    }
+    
+    @Override
+    public void handle(ChangePasswordCommand command) {
+        LOGGER.info("Processing ChangePassword command for user ID: {}", command.userId());
+        
+        User user = userRepository.findById(command.userId())
+            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
+        
+        if (!user.getActive()) {
+            throw new UserAccountDeactivatedException(user.getEmail());
+        }
+        
+        // Verify current password
+        if (!hashingService.matches(command.currentPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+        
+        // Check if new password is different from current
+        if (hashingService.matches(command.newPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must be different from current password");
+        }
+        
+        // Hash and set new password
+        String hashedPassword = hashingService.encode(command.newPassword());
+        user.setPasswordHash(hashedPassword);
+        userRepository.save(user);
+        
+        LOGGER.info("Password changed successfully for user ID: {}", command.userId());
+    }
+    
+    @Override
+    public void handle(DeactivateUserCommand command) {
+        LOGGER.info("Processing DeactivateUser command for user ID: {}", command.userId());
+        
+        User user = userRepository.findById(command.userId())
+            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
+        
+        if (!user.getActive()) {
+            LOGGER.warn("User {} is already deactivated", command.userId());
+            return;
+        }
+        
+        user.setActive(false);
+        userRepository.save(user);
+        
+        LOGGER.info("User deactivated successfully for user ID: {}", command.userId());
     }
 }

@@ -17,6 +17,8 @@ import com.atg.autonexo.backend.workshop.domain.model.entities.Location;
 import com.atg.autonexo.backend.workshop.domain.model.entities.ServiceTemplate;
 import com.atg.autonexo.backend.workshop.domain.model.entities.StaffMember;
 import com.atg.autonexo.backend.workshop.domain.model.valueobjects.BusinessRegistration;
+import com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionStatus;
+import com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionTier;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -24,6 +26,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
@@ -88,6 +92,19 @@ public class Workshop extends AuditableAbstractAggregateRoot<Workshop> {
     @Column(name = "tag")
     private Set<CapabilityTag> capabilityTags = new HashSet<>();
     
+    // === Subscription Management ===
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SubscriptionStatus subscriptionStatus = SubscriptionStatus.TRIAL;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SubscriptionTier subscriptionTier = SubscriptionTier.FREE;
+    
+    @Column
+    private LocalDateTime subscriptionExpiresAt;
+    
     protected Workshop() {}
     
     /**
@@ -113,6 +130,8 @@ public class Workshop extends AuditableAbstractAggregateRoot<Workshop> {
         this.staffMembers = new ArrayList<>();
         this.capabilityTags = new HashSet<>();
         this.photoUrls = new ArrayList<>();
+        this.subscriptionStatus = SubscriptionStatus.TRIAL;
+        this.subscriptionTier = SubscriptionTier.FREE;
     }
     
     // === Workshop Management ===
@@ -395,5 +414,47 @@ public class Workshop extends AuditableAbstractAggregateRoot<Workshop> {
      */
     public List<String> getPhotoUrls() {
         return new ArrayList<>(this.photoUrls);
+    }
+    
+    // === Subscription Management ===
+    
+    /**
+     * Updates the workshop subscription
+     */
+    public void updateSubscription(SubscriptionStatus status, SubscriptionTier tier, LocalDateTime expiresAt) {
+        if (status == null) {
+            throw new IllegalArgumentException("Subscription status cannot be null");
+        }
+        if (tier == null) {
+            throw new IllegalArgumentException("Subscription tier cannot be null");
+        }
+        this.subscriptionStatus = status;
+        this.subscriptionTier = tier;
+        this.subscriptionExpiresAt = expiresAt;
+    }
+    
+    /**
+     * Checks if the subscription is currently active
+     */
+    public boolean isSubscriptionActive() {
+        if (subscriptionStatus == SubscriptionStatus.CANCELLED || 
+            subscriptionStatus == SubscriptionStatus.EXPIRED) {
+            return false;
+        }
+        
+        if (subscriptionExpiresAt != null && LocalDateTime.now().isAfter(subscriptionExpiresAt)) {
+            return false;
+        }
+        
+        return subscriptionStatus == SubscriptionStatus.ACTIVE || 
+               subscriptionStatus == SubscriptionStatus.TRIAL;
+    }
+    
+    /**
+     * Checks if the workshop can access premium features
+     */
+    public boolean canAccessPremiumFeatures() {
+        return isSubscriptionActive() && 
+               (subscriptionTier == SubscriptionTier.BASIC || subscriptionTier == SubscriptionTier.PREMIUM);
     }
 }

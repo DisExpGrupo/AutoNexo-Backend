@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
 import com.atg.autonexo.backend.iam.domain.model.queries.GetAllUsersQuery;
+import com.atg.autonexo.backend.iam.domain.model.queries.GetCurrentUserQuery;
 import com.atg.autonexo.backend.iam.domain.model.queries.GetUserByEmailQuery;
 import com.atg.autonexo.backend.iam.domain.services.UserQueryService;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
@@ -58,5 +59,20 @@ public class UserQueryServiceImpl implements UserQueryService {
         LOGGER.debug("Retrieved {} users", users.size());
         
         return users;
+    }
+    
+    @Override
+    public Optional<User> handle(GetCurrentUserQuery query) {
+        LOGGER.debug("Processing GetCurrentUserQuery for user ID: {}", query.userId());
+        
+        Optional<User> user = userRepository.findById(query.userId());
+        
+        if (user.isPresent()) {
+            LOGGER.debug("User found with ID: {}", user.get().getId());
+        } else {
+            LOGGER.debug("No user found with ID: {}", query.userId());
+        }
+        
+        return user;
     }
 }

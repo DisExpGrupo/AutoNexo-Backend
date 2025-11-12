@@ -1,0 +1,17 @@
+*** mvn -> 3.9.11 , jdk25
+
+mvn clean package -DskipTests
+
+docker-compose -f docker-compose.prod.yml build --no-cache
+
+(optional testing)
+docker run -p 8080:8080 autonexo-api:latest 
+docker run --env-file ./.env -p 8080:8080 autonexo-api:latest
+
+az login --scope https://management.core.windows.net//.default
+
+az acr login --name autonexo
+
+docker tag autonexo-api:latest autonexo.azurecr.io/autonexo-api:latest
+
+docker push autonexo.azurecr.io/autonex-api:latest

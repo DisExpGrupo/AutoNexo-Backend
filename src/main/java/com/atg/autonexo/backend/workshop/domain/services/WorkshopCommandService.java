@@ -51,4 +51,9 @@ public interface WorkshopCommandService {
      * Updates workshop capability tags (replaces all existing tags)
      */
     void handle(UpdateWorkshopCapabilityTagsCommand command);
+    
+    /**
+     * Updates workshop subscription
+     */
+    Workshop handle(UpdateSubscriptionCommand command);
 }
