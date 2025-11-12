@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #FF5722; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .vehicle-info { background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .reminder-details { background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Maintenance Reminder</h1>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>This is a reminder that your vehicle <strong>{vehicleName}</strong> is due for maintenance.</p>
+            
+            <div class="vehicle-info">
+                <strong>Vehicle:</strong> {vehicleName}
+            </div>
+            
+            <div class="reminder-details">
+                <p><strong>Reminder Type:</strong> {reminderType}</p>
+                <p>{details}</p>
+            </div>
+            
+            <p>Please schedule a maintenance appointment with your preferred workshop to keep your vehicle in optimal condition.</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message from Autonexo. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+

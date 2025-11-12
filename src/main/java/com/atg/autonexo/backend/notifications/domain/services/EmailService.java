@@ -37,5 +37,17 @@ public interface EmailService {
      * @param workshopName name of the workshop
      */
     void sendInvitationExpiredEmail(String to, String workshopName);
+    
+    /**
+     * Sends a maintenance reminder email.
+     * @param to recipient email address
+     * @param vehicleBrand vehicle brand
+     * @param vehicleModel vehicle model
+     * @param vehicleYear vehicle year
+     * @param reminderType type of reminder ("mileage" or "time")
+     * @param details additional details about the reminder
+     */
+    void sendMaintenanceReminderEmail(String to, String vehicleBrand, String vehicleModel, 
+                                     Integer vehicleYear, String reminderType, String details);
 }
 

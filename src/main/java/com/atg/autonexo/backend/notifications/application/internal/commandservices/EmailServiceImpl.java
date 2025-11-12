@@ -84,6 +84,21 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
     
+    @Override
+    public void sendMaintenanceReminderEmail(String to, String vehicleBrand, String vehicleModel, 
+                                            Integer vehicleYear, String reminderType, String details) {
+        String vehicleName = String.format("%s %s %d", vehicleBrand, vehicleModel, vehicleYear);
+        String subject = "Maintenance Reminder - " + vehicleName + " - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("vehicleName", vehicleName);
+        variables.put("reminderType", reminderType);
+        variables.put("details", details);
+        
+        String htmlBody = templateService.processTemplate("maintenance-reminder", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
     /**
      * Sends an HTML email using JavaMailSender.
      */
