@@ -191,4 +191,66 @@ public class WorkshopContextFacadeImpl implements WorkshopContextFacade {
             return null;
         }
     }
+    
+    @Override
+    public void updateWorkshopTrustScore(Long workshopId, Float trustScore) {
+        LOGGER.info("Updating trust score for workshop {} to {}", workshopId, trustScore);
+        
+        try {
+            Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new WorkshopNotFoundException(workshopId));
+            
+            workshop.setTrustScore(trustScore);
+            workshopRepository.save(workshop);
+            
+            LOGGER.info("Successfully updated trust score for workshop {}", workshopId);
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.warn("Workshop not found when updating trust score: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("Error updating workshop trust score: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update workshop trust score", e);
+        }
+    }
+    
+    @Override
+    public boolean workshopExists(Long workshopId) {
+        try {
+            return workshopRepository.findById(workshopId)
+                .map(Workshop::isActive)
+                .orElse(false);
+        } catch (Exception e) {
+            LOGGER.error("Error checking if workshop exists: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    @Override
+    public void updateSubscription(
+            Long workshopId,
+            com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionTier tier,
+            com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionStatus status,
+            java.time.LocalDate expiresAt) {
+        LOGGER.info("Updating subscription for workshop {} to tier {}, status {}, expires at {}", 
+            workshopId, tier, status, expiresAt);
+        
+        try {
+            Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new WorkshopNotFoundException(workshopId));
+            
+            workshop.setSubscriptionTier(tier);
+            workshop.setSubscriptionStatus(status);
+            // Convert LocalDate to LocalDateTime (end of day)
+            workshop.setSubscriptionExpiresAt(expiresAt.atTime(23, 59, 59));
+            workshopRepository.save(workshop);
+            
+            LOGGER.info("Successfully updated subscription for workshop {}", workshopId);
+        } catch (WorkshopNotFoundException e) {
+            LOGGER.warn("Workshop not found when updating subscription: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("Error updating workshop subscription: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update workshop subscription", e);
+        }
+    }
 }

@@ -48,6 +48,9 @@ public class User extends AuditableAbstractAggregateRoot<User> {
     
     @Column(nullable = false)
     private Boolean active = true;
+    
+    @Column
+    private Float trustScore;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",

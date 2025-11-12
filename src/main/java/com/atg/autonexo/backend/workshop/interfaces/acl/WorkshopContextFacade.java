@@ -48,4 +48,37 @@ public interface WorkshopContextFacade {
      * @return the workshop ID, or null if user has no workshop
      */
     Long getWorkshopIdForUser(Long userId);
+    
+    /**
+     * Update the trust score for a workshop
+     * Called by Trust & Reputation context after calculating the score
+     * 
+     * @param workshopId the ID of the workshop
+     * @param trustScore the new trust score to set
+     */
+    void updateWorkshopTrustScore(Long workshopId, Float trustScore);
+    
+    /**
+     * Check if a workshop exists
+     * 
+     * @param workshopId the ID of the workshop
+     * @return true if workshop exists and is active
+     */
+    boolean workshopExists(Long workshopId);
+    
+    /**
+     * Update workshop subscription after successful payment
+     * Called by Payment context after a successful subscription payment
+     * 
+     * @param workshopId the ID of the workshop
+     * @param tier the new subscription tier
+     * @param status the subscription status
+     * @param expiresAt the new expiration date
+     */
+    void updateSubscription(
+        Long workshopId,
+        com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionTier tier,
+        com.atg.autonexo.backend.workshop.domain.model.valueobjects.SubscriptionStatus status,
+        java.time.LocalDate expiresAt
+    );
 }
