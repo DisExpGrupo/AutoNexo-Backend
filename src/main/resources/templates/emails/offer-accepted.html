@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f9f9f9; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .success-info { background-color: #c8e6c9; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Offer Accepted</h1>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>Great news! Your offer has been accepted by <strong>{userName}</strong>.</p>
+            
+            <div class="success-info">
+                <p><strong>Offer ID:</strong> {offerId}</p>
+                <p><strong>Status:</strong> Accepted</p>
+            </div>
+            
+            <p>A service booking has been created. Please confirm the scheduled date and time with the customer.</p>
+            <p style="text-align: center;">
+                <a href="{viewUrl}" class="button">View Service Booking</a>
+            </p>
+            <p>You can now proceed to schedule the service appointment.</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message from Autonexo. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+

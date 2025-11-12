@@ -99,6 +99,83 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
     
+    @Override
+    public void sendNewOfferEmail(String to, Long serviceRequestId, Long offerId, String workshopName) {
+        String subject = "New Offer Received - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("workshopName", workshopName);
+        variables.put("serviceRequestId", String.valueOf(serviceRequestId));
+        variables.put("offerId", String.valueOf(offerId));
+        variables.put("viewUrl", emailProperties.getBaseUrl() + "/service-requests/" + serviceRequestId);
+        
+        String htmlBody = templateService.processTemplate("new-offer", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
+    @Override
+    public void sendOfferAcceptedEmail(String to, Long offerId, String userName) {
+        String subject = "Offer Accepted - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("userName", userName);
+        variables.put("offerId", String.valueOf(offerId));
+        variables.put("viewUrl", emailProperties.getBaseUrl() + "/service-bookings");
+        
+        String htmlBody = templateService.processTemplate("offer-accepted", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
+    @Override
+    public void sendOfferRejectedEmail(String to, Long offerId) {
+        String subject = "Offer Rejected - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("offerId", String.valueOf(offerId));
+        
+        String htmlBody = templateService.processTemplate("offer-rejected", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
+    @Override
+    public void sendServiceCompletedEmail(String to, Long serviceBookingId, String workshopName) {
+        String subject = "Service Completed - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("workshopName", workshopName);
+        variables.put("serviceBookingId", String.valueOf(serviceBookingId));
+        variables.put("viewUrl", emailProperties.getBaseUrl() + "/service-bookings/" + serviceBookingId);
+        
+        String htmlBody = templateService.processTemplate("service-completed", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
+    @Override
+    public void sendPickupConfirmedEmail(String to, Long serviceBookingId, String userName) {
+        String subject = "Pickup Confirmed - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("userName", userName);
+        variables.put("serviceBookingId", String.valueOf(serviceBookingId));
+        
+        String htmlBody = templateService.processTemplate("pickup-confirmed", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
+    @Override
+    public void sendUpcomingServiceEmail(String to, Long serviceBookingId, java.time.LocalDateTime scheduledDate, boolean isUser) {
+        String subject = "Upcoming Service Reminder - Autonexo";
+        
+        Map<String, String> variables = new HashMap<>();
+        variables.put("serviceBookingId", String.valueOf(serviceBookingId));
+        variables.put("scheduledDate", scheduledDate.toString());
+        variables.put("isUser", String.valueOf(isUser));
+        variables.put("viewUrl", emailProperties.getBaseUrl() + "/service-bookings/" + serviceBookingId);
+        
+        String htmlBody = templateService.processTemplate("upcoming-service", variables);
+        sendEmail(to, subject, htmlBody);
+    }
+    
     /**
      * Sends an HTML email using JavaMailSender.
      */
