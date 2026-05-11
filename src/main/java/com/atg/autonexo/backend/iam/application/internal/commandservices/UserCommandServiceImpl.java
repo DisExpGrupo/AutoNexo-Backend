@@ -122,7 +122,10 @@ public class UserCommandServiceImpl implements UserCommandService {
         
         // Send verification email (will be handled by Notifications BC)
         try {
-    notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
+    notificationService.sendEmailVerificationToken(
+        savedUser.getEmail(),
+        verificationToken
+    );
 } catch (Exception e) {
     LOGGER.warn("Email failed but user was created", e);
 }
