@@ -15,11 +15,13 @@ FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
-# Crear carpeta de logs antes de cambiar de usuario
-RUN mkdir -p /app/logs
+# Crear carpeta de logs y darle permisos antes de cambiar de usuario
+RUN mkdir -p /app/logs \
+    && addgroup -S spring \
+    && adduser -S spring -G spring \
+    && chown -R spring:spring /app/logs /app
 
-# Crear usuario no-root
-RUN addgroup -S spring && adduser -S spring -G spring
+# Cambiar a usuario no-root
 USER spring:spring
 
 # Copiar jar compilado
