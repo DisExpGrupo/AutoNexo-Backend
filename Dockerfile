@@ -1,16 +1,13 @@
 # Stage 1: Build with JDK 25 + Maven
 FROM eclipse-temurin:25-jdk-alpine AS build
 
-# Instalar Maven
 RUN apk add --no-cache maven bash git openssh
 
 WORKDIR /app
 
-# Copiar pom y src
-COPY pom.xml .
+COPY pom.xml . 
 COPY src ./src
 
-# Compilar jar sin tests
 RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime
@@ -18,11 +15,14 @@ FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
+# Crear carpeta de logs antes de cambiar de usuario
+RUN mkdir -p /app/logs
+
 # Crear usuario no-root
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# Copiar jar compilado desde build
+# Copiar jar compilado
 COPY --from=build /app/target/*.jar app.jar
 
 # Exponer puerto
@@ -30,7 +30,7 @@ EXPOSE ${PORT:-8080}
 
 # Variables de entorno
 ENV SPRING_PROFILES_ACTIVE=prod
-ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV JAVA_OPTS="-Xmx512m -Xms256m -Dserver.port=${PORT:-8080}"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
