@@ -1,6 +1,6 @@
 *** mvn -> 3.9.11 , jdk25
 
-mvn clean package -DskipTests
+mvn clean package -DskipTests 
 
 docker-compose -f docker-compose.prod.yml build --no-cache
 
