@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;NON_KEYWORDS=YEAR
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+
+authorization:
+  jwt:
+    secret: test-jwt-secret-for-testing-only-not-used-in-production
+    expiration:
+      days: 7
+
+cloudinary:
+  cloud-name: test
+  api-key: test-key
+  api-secret: test-secret
+  base-url: test-url
+
+management:
+  health:
+    mail:
+      enabled: false
+
+autonexo:
+  email:
+    from: noreply@test.com
+    base-url: http://localhost:8080
