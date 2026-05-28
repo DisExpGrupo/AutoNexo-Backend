@@ -3,10 +3,10 @@ services:
     image: mysql:8.0
     container_name: autonexo-mysql-dev
     environment:
-      MYSQL_ROOT_PASSWORD: Admin-123
-      MYSQL_DATABASE: autonexo-database
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Admin-123}
+      MYSQL_DATABASE: ${DB_NAME:-autonexo-database}
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:

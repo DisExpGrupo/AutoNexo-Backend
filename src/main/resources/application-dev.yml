@@ -1,0 +1,67 @@
+#DEVELOPMENT ENVIRONMENT CONFIGURATION
+# Import environment variables from .env file if it exists (optional)
+
+spring:
+  config:
+    import: "optional:file:.env[.properties]"
+  datasource:
+    url: "jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:autonexo-database}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:Admin-123}
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: false
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: true
+    remote:
+      open-browser: true
+      "open-browser.url": http://localhost:8080/swagger-ui.html
+  main:
+    web-application-type: servlet
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:amir.devsandbox@gmail.com}
+    password: "${EMAIL_PASSWORD:xjwj pnwb ddla vogo}"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+# JWT Authorization
+authorization:
+  jwt:
+    secret: ${JWT_SECRET:autonexo-dev-secret-jwt-key-for-development-only-2024}
+    expiration:
+      days: ${JWT_EXPIRATION_DAYS:7}
+
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dxbmcwti0}
+  api-key: ${CLOUDINARY_API_KEY:323226415791696}
+  api-secret: ${CLOUDINARY_API_SECRET:DrkoIPMJ-BvsFNRG49DpbRRQVyw}
+  base-url: ${CLOUDINARY_BASE_URL:autonexo}
+
+# Actuator (show more details in dev)
+management:
+  endpoint:
+    health:
+      show-details: always
+
+# Application email settings
+autonexo:
+  email:
+    from: noreply@autonexo.com
+    base-url: http://localhost:8080
