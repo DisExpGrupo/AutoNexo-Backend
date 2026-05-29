@@ -128,7 +128,10 @@ public class WebSecurityConfiguration {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
-                                "/webjars/**").permitAll() // Public routes
+                                "/webjars/**",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/metrics/**").permitAll() // Public routes
                         .anyRequest().authenticated()); // All other requests require authentication
 
         // Authentication provider configuration

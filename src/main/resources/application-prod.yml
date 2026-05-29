@@ -39,6 +39,7 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+          
 authorization:
   jwt:
     secret: ${JWT_SECRET}
@@ -61,18 +62,13 @@ server:
     enabled: true
     mime-types: "text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json"
     min-response-size: 1024
+  shutdown: graceful
 
 management:
-  endpoint:
-    health:
-      show-details: never
   endpoints:
     web:
       exposure:
-        include: health,info
-  info:
-    env:
-      enabled: true
+        include: "health,info,metrics"
 
 logging:
   level:
