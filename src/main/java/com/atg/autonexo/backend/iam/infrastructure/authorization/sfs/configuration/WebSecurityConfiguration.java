@@ -100,13 +100,13 @@ public class WebSecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         // CORS configuration
-        http.cors(configurer -> configurer.configurationSource(request -> {
-    var cors = new CorsConfiguration();
-    cors.setAllowedOrigins(List.of("*"));
-    cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
-    cors.setAllowedHeaders(List.of("*"));
-    return cors;
-}));
+        http.cors(configurer -> configurer.configurationSource(_ -> {
+            var cors = new CorsConfiguration();
+            cors.setAllowedOrigins(List.of("*"));
+            cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
+            cors.setAllowedHeaders(List.of("*"));
+            return cors;
+        }));
         
         // Disable CSRF, configure exception handling and session policy
         http.csrf(csrfConfigurer -> csrfConfigurer.disable())
@@ -128,9 +128,10 @@ public class WebSecurityConfiguration {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
+                                "/webjars/**",
                                 "/actuator/health",
                                 "/actuator/info",
-                                "/webjars/**").permitAll() // Public routes
+                                "/actuator/metrics/**").permitAll() // Public routes
                         .anyRequest().authenticated()); // All other requests require authentication
 
         // Authentication provider configuration

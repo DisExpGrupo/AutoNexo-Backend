@@ -9,6 +9,9 @@
 -- VEHICLE BRANDS
 -- =====================================================
 
+
+-- NOTA DE NUEVO DEV: ESTO NUNCA FUNCIONO, EL SEEDING LO HACEN EN INFRASTRUCTURE XDDD, me trolearon
+
 INSERT INTO vehicle_brand (name, logo_url, country, is_active, popular, created_at, updated_at) VALUES
 -- Japanese Brands (Popular)
 ('Toyota', NULL, 'Japan', true, true, NOW(), NOW()),

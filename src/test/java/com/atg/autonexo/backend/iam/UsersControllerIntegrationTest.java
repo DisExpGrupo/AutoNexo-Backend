@@ -1,20 +1,37 @@
 package com.atg.autonexo.backend.iam;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.atg.autonexo.backend.iam.domain.model.aggregates.User;
+import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.Email;
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.UserId;
+import com.atg.autonexo.backend.shared.domain.model.valueobjects.WorkshopId;
+import com.atg.autonexo.backend.workshop.domain.model.aggregates.Invitation;
+import com.atg.autonexo.backend.workshop.domain.model.aggregates.Workshop;
+import com.atg.autonexo.backend.workshop.domain.model.valueobjects.InvitationCode;
+import com.atg.autonexo.backend.workshop.infrastructure.persistence.jpa.repositories.InvitationRepository;
+import com.atg.autonexo.backend.workshop.infrastructure.persistence.jpa.repositories.WorkshopRepository;
+
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
+
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.atg.autonexo.backend.iam.domain.model.valueobjects.Roles;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Integration test for UsersController
@@ -23,7 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * </p>
  */
 @SpringBootTest
-@AutoConfigureWebMvc
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 public class UsersControllerIntegrationTest {
@@ -31,8 +48,22 @@ public class UsersControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @MockBean
+    private JavaMailSender javaMailSender;
+
     @Autowired
-    private ObjectMapper objectMapper;
+    private WorkshopRepository workshopRepository;
+
+    @Autowired
+    private InvitationRepository invitationRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        when(javaMailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+    }
 
     @Test
     public void testUserSignupAndSigninFlow() throws Exception {
@@ -108,6 +139,37 @@ public class UsersControllerIntegrationTest {
 
     @Test
     public void testSignupWithWorkshopEmployeeRole() throws Exception {
+        String ownerSignupJson = """
+            {
+                "email": "owner@workshop.com",
+                "password": "password123",
+                "firstName": "Workshop",
+                "lastName": "Owner",
+                "phoneNumber": "9998887776",
+                "requestedRole": "CAR_OWNER"
+            }
+            """;
+
+        mockMvc.perform(post("/api/v1/users/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(ownerSignupJson))
+                .andExpect(status().isCreated());
+
+        User owner = userRepository.findByEmail("owner@workshop.com").orElseThrow();
+
+        Workshop workshop = new Workshop(new UserId(owner.getId()), "Test Workshop", null, null, null);
+        workshop = workshopRepository.save(workshop);
+
+        String invitationCode = "T3STCODE";
+        Invitation invitation = new Invitation(
+                new InvitationCode(invitationCode),
+                LocalDateTime.now().plusDays(7),
+                new Email("employee@workshop.com"),
+                new WorkshopId(workshop.getId()),
+                "Welcome to the team!"
+        );
+        invitationRepository.save(invitation);
+
         String workshopEmployeeSignupJson = """
             {
                 "email": "employee@workshop.com",
@@ -115,9 +177,10 @@ public class UsersControllerIntegrationTest {
                 "firstName": "Bob",
                 "lastName": "Employee",
                 "phoneNumber": "1122334455",
-                "requestedRole": "WORKSHOP_EMPLOYEE"
+                "requestedRole": "WORKSHOP_EMPLOYEE",
+                "invitationCode": "%s"
             }
-            """;
+            """.formatted(invitationCode);
 
         mockMvc.perform(post("/api/v1/users/signup")
                 .contentType(MediaType.APPLICATION_JSON)

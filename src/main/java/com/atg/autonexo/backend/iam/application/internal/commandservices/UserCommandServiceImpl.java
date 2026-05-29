@@ -121,7 +121,7 @@ public class UserCommandServiceImpl implements UserCommandService {
         emailVerificationTokenRepository.save(emailVerificationToken);
         
         // Send verification email (will be handled by Notifications BC)
-      notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
+        notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
         LOGGER.info("Email verification token generated for user: {}", savedUser.getId());
         
         // Process invitation if user is WORKSHOP_EMPLOYEE and has invitation code
