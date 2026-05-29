@@ -13,6 +13,9 @@ spring:
     hibernate:
       naming:
         physical-strategy: com.atg.autonexo.backend.shared.infrastructure.persistence.jpa.configuration.strategy.SnakeCaseWithPluralizedTablePhysicalNamingStrategy
+  threads:
+    virtual:
+      enabled: true
 
 documentation:
   application:
