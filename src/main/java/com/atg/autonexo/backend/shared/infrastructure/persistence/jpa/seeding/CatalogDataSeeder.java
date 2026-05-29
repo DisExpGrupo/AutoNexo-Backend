@@ -19,7 +19,7 @@ import java.util.List;
  * This component runs automatically on application startup when the 'dev' profile is active.
  */
 @Component
-@Profile("dev")
+@Profile({"dev", "prod"})
 public class CatalogDataSeeder implements CommandLineRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CatalogDataSeeder.class);
