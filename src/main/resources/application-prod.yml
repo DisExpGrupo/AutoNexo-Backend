@@ -53,6 +53,7 @@ cloudinary:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
   error:
     include-message: always
     include-stacktrace: never
