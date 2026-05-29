@@ -35,7 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: deploy-group
     
-    needs: test 
+    needs: test
+
+    # 🌟 ¡AGREGA ESTA LÍNEA AQUÍ! Mapea el job directamente con la caja de la interfaz web
+    environment: production
     
     # 🌟 Simplificado: Si el evento es un push (Merge), va a main. Si es un PR, este job se ignora solo.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
