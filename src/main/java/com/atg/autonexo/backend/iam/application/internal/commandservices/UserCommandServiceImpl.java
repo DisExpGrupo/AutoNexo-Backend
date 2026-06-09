@@ -53,7 +53,9 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final TokenService tokenService;
     private final RoleValidationService roleValidationService;
     private final WorkshopContextFacade workshopContextFacade;
+    // Unused while email verification is disabled
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    // Unused while email verification is disabled
     private final NotificationService notificationService;
 
     public UserCommandServiceImpl(
@@ -113,16 +115,21 @@ public class UserCommandServiceImpl implements UserCommandService {
         User savedUser = userRepository.save(user);
         LOGGER.info("User registered successfully with ID: {}", savedUser.getId());
         
+        // Email verification is DISABLED to avoid synchronous SMTP bottlenecks during registration.
+        // Free email providers commonly block port 587, causing the entire signup request to hang or fail.
+        // The `isVerified` field on User remains `false` for new users, but the backend does not enforce it,
+        // so this has no functional impact. Re-enable email verification when a proper email infrastructure is in place.
+        //
         // Generate email verification token
-        String verificationToken = UUID.randomUUID().toString();
-        LocalDateTime expiresAt = LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRATION_HOURS);
-        EmailVerificationToken emailVerificationToken = new EmailVerificationToken(
-            verificationToken, savedUser, expiresAt);
-        emailVerificationTokenRepository.save(emailVerificationToken);
-        
+        // String verificationToken = UUID.randomUUID().toString();
+        // LocalDateTime expiresAt = LocalDateTime.now().plusHours(VERIFICATION_TOKEN_EXPIRATION_HOURS);
+        // EmailVerificationToken emailVerificationToken = new EmailVerificationToken(
+        //     verificationToken, savedUser, expiresAt);
+        // emailVerificationTokenRepository.save(emailVerificationToken);
+        //
         // Send verification email (will be handled by Notifications BC)
-        notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
-        LOGGER.info("Email verification token generated for user: {}", savedUser.getId());
+        // notificationService.sendEmailVerificationToken(savedUser.getEmail(), verificationToken);
+        // LOGGER.info("Email verification token generated for user: {}", savedUser.getId());
         
         // Process invitation if user is WORKSHOP_EMPLOYEE and has invitation code
         if (command.requestedRole() == Roles.WORKSHOP_EMPLOYEE && 
