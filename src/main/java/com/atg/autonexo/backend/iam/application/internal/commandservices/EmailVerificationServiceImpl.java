@@ -31,6 +31,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     
     private final UserRepository userRepository;
     private final EmailVerificationTokenRepository tokenRepository;
+    // Unused while email verification is disabled
     private final NotificationService notificationService;
     
     public EmailVerificationServiceImpl(
@@ -74,8 +75,10 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         
         LOGGER.info("Email verification token generated for user: {}", user.getId());
         
+        // Email verification is DISABLED to avoid synchronous SMTP bottlenecks.
+        // This code remains commented until a proper email infrastructure is in place.
         // Send notification (will be handled by Notifications BC)
-        notificationService.sendEmailVerificationToken(user.getEmail(), token);
+        // notificationService.sendEmailVerificationToken(user.getEmail(), token);
     }
     
     @Override
