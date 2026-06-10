@@ -1,16 +1,23 @@
 package com.atg.autonexo.backend.iam.domain.model.exceptions;
 
 /**
- * Exception thrown when attempting to create a user that already exists
+ * Exception thrown when attempting to create a user that already exists.
+ * <p>
+ * Mapped to HTTP 409 by {@code IamExceptionHandler}. The message does
+ * not echo the email back to the client.
+ * </p>
  */
 public class UserAlreadyExistsException extends RuntimeException {
-    
-    public UserAlreadyExistsException(String email) {
-        super("User with email " + email + " already exists");
+
+    public UserAlreadyExistsException() {
+        super("An account with this email already exists");
     }
-    
-    public UserAlreadyExistsException(String email, Throwable cause) {
-        super("User with email " + email + " already exists", cause);
+
+    public UserAlreadyExistsException(String message) {
+        super(message);
+    }
+
+    public UserAlreadyExistsException(String message, Throwable cause) {
+        super(message, cause);
     }
 }
-
