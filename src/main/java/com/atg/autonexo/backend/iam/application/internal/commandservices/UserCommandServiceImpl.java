@@ -84,7 +84,7 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         // Check if user already exists
         if (userRepository.existsByEmail(command.email())) {
-            throw new UserAlreadyExistsException(command.email());
+            throw new UserAlreadyExistsException();
         }
 
         // Validate requested role
@@ -172,7 +172,7 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         // Check if user is active
         if (!user.getActive()) {
-            throw new UserAccountDeactivatedException(command.email());
+            throw new UserAccountDeactivatedException();
         }
 
         // Verify password
@@ -202,12 +202,12 @@ public class UserCommandServiceImpl implements UserCommandService {
         LOGGER.info("Processing UpdateUserProfile command for user ID: {}", command.userId());
         
         User user = userRepository.findById(command.userId())
-            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
-        
+            .orElseThrow(() -> new UserNotFoundException());
+
         if (!user.getActive()) {
-            throw new UserAccountDeactivatedException(user.getEmail());
+            throw new UserAccountDeactivatedException();
         }
-        
+
         // Update fields if provided
         if (command.firstName() != null) {
             user.setFirstName(command.firstName());
@@ -228,12 +228,12 @@ public class UserCommandServiceImpl implements UserCommandService {
         LOGGER.info("Processing ChangePassword command for user ID: {}", command.userId());
         
         User user = userRepository.findById(command.userId())
-            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
-        
+            .orElseThrow(() -> new UserNotFoundException());
+
         if (!user.getActive()) {
-            throw new UserAccountDeactivatedException(user.getEmail());
+            throw new UserAccountDeactivatedException();
         }
-        
+
         // Verify current password
         if (!hashingService.matches(command.currentPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
@@ -257,7 +257,7 @@ public class UserCommandServiceImpl implements UserCommandService {
         LOGGER.info("Processing DeactivateUser command for user ID: {}", command.userId());
         
         User user = userRepository.findById(command.userId())
-            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + command.userId()));
+            .orElseThrow(() -> new UserNotFoundException());
         
         if (!user.getActive()) {
             LOGGER.warn("User {} is already deactivated", command.userId());

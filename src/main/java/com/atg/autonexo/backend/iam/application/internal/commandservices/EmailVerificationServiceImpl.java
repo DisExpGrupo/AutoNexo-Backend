@@ -13,6 +13,7 @@ import com.atg.autonexo.backend.iam.application.internal.outboundservices.notifi
 import com.atg.autonexo.backend.iam.domain.model.commands.ResendVerificationCommand;
 import com.atg.autonexo.backend.iam.domain.model.commands.VerifyEmailCommand;
 import com.atg.autonexo.backend.iam.domain.model.entities.EmailVerificationToken;
+import com.atg.autonexo.backend.iam.domain.model.exceptions.InvalidTokenException;
 import com.atg.autonexo.backend.iam.domain.model.exceptions.UserNotFoundException;
 import com.atg.autonexo.backend.iam.domain.services.EmailVerificationService;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.EmailVerificationTokenRepository;
@@ -52,7 +53,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
             userRepository.findByEmail(command.email());
         
         if (userOptional.isEmpty()) {
-            throw new UserNotFoundException(command.email());
+            throw new UserNotFoundException();
         }
         
         com.atg.autonexo.backend.iam.domain.model.aggregates.User user = userOptional.get();
@@ -88,14 +89,14 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         // Find token
         Optional<EmailVerificationToken> tokenOptional = tokenRepository.findByToken(command.token());
         if (tokenOptional.isEmpty()) {
-            throw new IllegalArgumentException("Invalid or expired verification token");
+            throw new InvalidTokenException();
         }
         
         EmailVerificationToken verificationToken = tokenOptional.get();
         
         // Validate token
         if (!verificationToken.isValid()) {
-            throw new IllegalArgumentException("Invalid or expired verification token");
+            throw new InvalidTokenException();
         }
         
         // Get user
