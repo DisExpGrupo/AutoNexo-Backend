@@ -1,8 +1,6 @@
 package com.atg.autonexo.backend.iam.infrastructure.authorization.sfs.pipeline;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +9,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
+import com.atg.autonexo.backend.shared.infrastructure.web.ErrorCode;
+import com.atg.autonexo.backend.shared.infrastructure.web.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,32 +19,35 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Unauthorized Request Handler Entry Point
  * <p>
- * This class handles unauthorized requests by returning a JSON response
- * with error details when authentication fails.
+ * Handles unauthenticated requests rejected by Spring Security and
+ * returns the standardized {@link ErrorResponse} JSON payload so the
+ * frontend can parse it consistently with all other error responses.
  * </p>
  */
 @Component
 public class UnauthorizedRequestHandlerEntryPoint implements AuthenticationEntryPoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnauthorizedRequestHandlerEntryPoint.class);
+    private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                         AuthenticationException authException) throws IOException {
-        
-        LOGGER.error("Unauthorized error: {}", authException.getMessage());
-        
+
+        LOGGER.warn("Unauthorized request to {}: {}",
+                request.getServletPath(), authException.getMessage());
+
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        
-        Map<String, Object> body = new HashMap<>();
-        body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        body.put("error", "Unauthorized");
-        body.put("message", authException.getMessage());
-        body.put("path", request.getServletPath());
-        body.put("timestamp", System.currentTimeMillis());
-        
-        ObjectMapper mapper = new ObjectMapper();
+
+        ErrorResponse body = ErrorResponse.of(
+                HttpServletResponse.SC_UNAUTHORIZED,
+                "Unauthorized",
+                ErrorCode.UNAUTHORIZED,
+                "Authentication required",
+                request.getServletPath()
+        );
+
         mapper.writeValue(response.getOutputStream(), body);
     }
 }
