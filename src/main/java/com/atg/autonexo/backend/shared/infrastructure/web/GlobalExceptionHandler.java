@@ -1,13 +1,10 @@
 package com.atg.autonexo.backend.shared.infrastructure.web;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,8 +13,14 @@ import org.springframework.web.context.request.WebRequest;
 /**
  * Global Exception Handler
  * <p>
- * This class handles all exceptions thrown by the application and returns
- * structured JSON responses with appropriate HTTP status codes.
+ * Handles all exceptions that escape the application's controllers and
+ * returns a standardized {@link ErrorResponse} JSON payload with the
+ * correct HTTP status code and machine-readable {@link ErrorCode}.
+ * </p>
+ * <p>
+ * Domain-specific exceptions (e.g. IAM-related) are handled by their
+ * own {@code @ControllerAdvice} classes, which take precedence over this
+ * global handler.
  * </p>
  */
 @ControllerAdvice
@@ -26,91 +29,69 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
-     * Handle RuntimeException and return a structured error response
+     * Handle Spring Security access-denied exceptions → 403.
      */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(
-            RuntimeException ex, WebRequest request) {
-        
-        LOGGER.error("Runtime exception occurred: {}", ex.getMessage(), ex);
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request",
-            ex.getMessage(),
-            request.getDescription(false).replace("uri=", "")
-        );
-        
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, WebRequest request) {
+        LOGGER.warn("Access denied: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, ErrorCode.ACCESS_DENIED,
+                "You do not have permission to perform this action", request);
     }
 
     /**
-     * Handle IllegalArgumentException and return a structured error response
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
-            IllegalArgumentException ex, WebRequest request) {
-        
-        LOGGER.error("Illegal argument exception occurred: {}", ex.getMessage(), ex);
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Bad Request",
-            ex.getMessage(),
-            request.getDescription(false).replace("uri=", "")
-        );
-        
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
-
-    /**
-     * Handle MethodArgumentNotValidException from @Valid validation failures
+     * Handle @Valid validation failures → 400.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValid(
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, WebRequest request) {
+        LOGGER.warn("Validation failed: {}", ex.getMessage());
 
-        LOGGER.error("Validation failed: {}", ex.getMessage());
+        String message = ex.getBindingResult().getAllErrors().stream()
+                .findFirst()
+                .map(err -> err.getDefaultMessage())
+                .orElse("Validation failed");
 
-        Map<String, Object> errorResponse = createErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Validation Failed",
-            ex.getBindingResult().getAllErrors().get(0).getDefaultMessage(),
-            request.getDescription(false).replace("uri=", "")
-        );
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, message, request);
     }
 
     /**
-     * Handle generic Exception and return a structured error response
+     * Handle IllegalArgumentException → 400.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, WebRequest request) {
+        LOGGER.warn("Illegal argument: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, ex.getMessage(), request);
+    }
+
+    /**
+     * Handle generic RuntimeException as a fallback → 500.
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntime(
+            RuntimeException ex, WebRequest request) {
+        LOGGER.error("Runtime exception: {}", ex.getMessage(), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR,
+                "Something went wrong. Please try again later.", request);
+    }
+
+    /**
+     * Final catch-all → 500.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(
+    public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, WebRequest request) {
-        
-        LOGGER.error("Unexpected exception occurred: {}", ex.getMessage(), ex);
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-            HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "Internal Server Error",
-            "An unexpected error occurred. Please try again later.",
-            request.getDescription(false).replace("uri=", "")
-        );
-        
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        LOGGER.error("Unexpected exception: {}", ex.getMessage(), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR,
+                "Something went wrong. Please try again later.", request);
     }
 
-    /**
-     * Create a structured error response
-     */
-    private Map<String, Object> createErrorResponse(int status, String error, String message, String path) {
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("timestamp", LocalDateTime.now().toString());
-        errorResponse.put("status", status);
-        errorResponse.put("error", error);
-        errorResponse.put("message", message);
-        errorResponse.put("path", path);
-        return errorResponse;
+    private ResponseEntity<ErrorResponse> build(
+            HttpStatus status, ErrorCode code, String message, WebRequest request) {
+        String path = request.getDescription(false).replace("uri=", "");
+        ErrorResponse body = ErrorResponse.of(
+                status.value(), status.getReasonPhrase(), code, message, path);
+        return new ResponseEntity<>(body, status);
     }
-} 
+}
