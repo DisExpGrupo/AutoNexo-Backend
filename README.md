@@ -1,219 +1,295 @@
-# AutoNexo Backend
+# Autonexo Backend
 
-> **Digital platform connecting vehicle owners with trusted mechanical workshops**
+Spring Boot REST API for the **Autonexo** platform (workshop, vehicle, and identity management).
 
-AutoNexo is a comprehensive backend system built with Spring Boot that powers mobile applications (Android & Flutter) for connecting car owners with mechanical workshops. The platform features complete digital maintenance history, geolocation-based workshop matching, bidirectional reviews, and subscription management.
+This document is focused on the **public HTTP contract** so the frontend team can integrate against a stable, predictable API.
 
-## 🚀 Features
+---
 
-- **7 Bounded Contexts** following Domain-Driven Design principles
-- **JWT Authentication** with role-based access control
-- **Geolocation Matching** (1-50km configurable radius)
-- **Digital Maintenance History** with ownership transfers
-- **Bidirectional Trust & Reputation System**
-- **Email Notifications** with HTML templates
-- **Media Management** via Cloudinary
-- **Subscription Payments** (simulated for demo)
-- **Public API** for workshop search and catalogs
-- **Swagger/OpenAPI** documentation
+## Table of Contents
 
-## 📋 Table of Contents
+1. [Tech Stack](#tech-stack)
+2. [Base URL & Versioning](#base-url--versioning)
+3. [Response Shapes](#response-shapes)
+4. [Error Handling](#error-handling)
+5. [Authentication](#authentication)
+6. [IAM Endpoints](#iam-endpoints)
+7. [Frontend Integration Tips](#frontend-integration-tips)
 
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Quick Start](#-quick-start)
-- [API Documentation](#-api-documentation)
-- [Project Structure](#-project-structure)
-- [Detailed Documentation](#-detailed-documentation)
-- [Contributing](#-contributing)
+---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: Spring Boot
-- **Language**: Java 25
-- **Database**: MySQL
-- **ORM**: Spring Data JPA + Hibernate
-- **Security**: Spring Security + JWT
-- **Email**: JavaMailSender (SMTP)
-- **Media**: Cloudinary
-- **API Docs**: Swagger/OpenAPI 3
-- **Build**: Maven
+- **Java 25** · Spring Boot 3 · Spring Security (JWT bearer)
+- **JPA / Hibernate** · MySQL (prod) · H2 (test)
+- **Maven** build
 
-## 🏗️ Architecture
+---
 
-AutoNexo follows **Domain-Driven Design (DDD)** with 7 bounded contexts:
+## Base URL & Versioning
 
-1. **IAM Context** - Identity & Access Management
-2. **Workshop Context** - Workshop profiles and configuration
-3. **Vehicle & Maintenance Context** - Vehicle registration and history
-4. **Matching & Booking Context** - Service requests and scheduling
-5. **Trust & Reputation Context** - Bidirectional review system
-6. **Notifications Context** - Email notifications
-7. **Payment Context** - Subscription management
-
-Each context communicates through **Anti-Corruption Layers (ACL)** to maintain loose coupling.
-
-## 📚 API Documentation
-
-### Public Endpoints (no authentication)
-
-- `POST /api/v1/users/signup` - Register user
-- `POST /api/v1/users/signin` - Login
-- `GET /api/v1/workshops/search` - Search workshops
-- `GET /api/v1/workshops/catalog/**` - Service catalogs
-
-### Authenticated Endpoints
-
-All other endpoints require JWT authentication:
-
-```bash
-Authorization: Bearer <your_jwt_token>
-```
-
-### Example: Register and Login
-
-```bash
-# Register
-curl -X POST http://localhost:8080/api/v1/users/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "email": "john@example.com",
-    "password": "SecurePass123!",
-    "firstName": "John",
-    "lastName": "Doe",
-    "role": "CAR_OWNER"
-  }'
-
-# Login
-curl -X POST http://localhost:8080/api/v1/users/signin \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john_doe",
-    "password": "SecurePass123!"
-  }'
-```
-
-### Roles
-
-- `CAR_OWNER` - Vehicle owners
-- `WORKSHOP_MANAGER` - Workshop administrators
-- `WORKSHOP_WORKER` - Workshop staff
-- `ADMIN` - System administrators
-
-### Public Catalog Endpoints
-
-The application provides standardized catalogs for frontend applications:
-
-```bash
-# Vehicle Brands & Models
-GET /api/v1/catalog/brands?popularOnly=true
-GET /api/v1/catalog/brands/{brandId}/models
-
-# Service Catalog (~60 services)
-GET /api/v1/catalog/services
-GET /api/v1/catalog/services?category=MAINTENANCE
-
-# Capability Tags (~50 tags)
-GET /api/v1/catalog/capability-tags
-GET /api/v1/catalog/capability-tags?category=BRAND
-```
-
-See [`prompt/catalog/implementation.md`](prompt/catalog/implementation.md) for complete catalog documentation.
-
-Full API documentation available at `/swagger-ui.html` when running.
-
-## 📁 Project Structure
+All endpoints are prefixed with `/api/v1`.
 
 ```
-autonexo-backend/
-├── src/main/java/com/atg/autonexo/backend/
-│   ├── iam/                    # Identity & Access Management
-│   ├── workshop/               # Workshop Management
-│   ├── vehicle/                # Vehicle & Maintenance
-│   ├── matching/               # Matching & Booking
-│   ├── trust/                  # Trust & Reputation
-│   ├── notifications/          # Notifications
-│   ├── payment/                # Payment Management
-│   └── shared/                 # Shared domain models
-├── src/main/resources/
-│   ├── application-dev.properties
-│   ├── application-prod.properties
-│   └── templates/emails/       # Email HTML templates
-├── prompt/                     # Detailed documentation
-│   ├── CORE.md                 # System overview
-│   ├── OVERVIEW.md             # Architecture details
-│   ├── API_ENDPOINTS.md        # Complete API listing
-│   ├── DEPLOYMENT.md           # Deployment guide
-│   ├── iam/
-│   ├── workshop/
-│   ├── vehicle/
-│   ├── matching/
-│   ├── trust/
-│   ├── notifications/
-│   └── payment/
-└── pom.xml
+http://localhost:8080/api/v1
 ```
 
-## 📖 Detailed Documentation
+OpenAPI/Swagger UI is exposed at `/swagger-ui.html` in non-production profiles.
 
-For comprehensive documentation, see the `prompt/` directory:
+---
 
-- **[CORE.md](prompt/CORE.md)** - System overview and all 7 bounded contexts
-- **[OVERVIEW.md](prompt/OVERVIEW.md)** - Architecture, patterns, and design decisions
-- **[API_ENDPOINTS.md](prompt/API_ENDPOINTS.md)** - Complete API endpoint listing
-- **[DEPLOYMENT.md](prompt/DEPLOYMENT.md)** - Deployment and configuration guide
-- **[Catalog System](prompt/catalog/implementation.md)**  - Vehicle brands, models, services & tags
+## Response Shapes
 
-### Context-Specific Documentation
+The API uses **three** response shapes consistently. The frontend can rely on always parsing JSON — there are no plain-text bodies.
 
-- [IAM Context](prompt/iam/improvements.md)
-- [Workshop Context](prompt/workshop/improvements.md)
-- [Vehicle & Maintenance](prompt/vehicle/implementation.md)
-- [Matching & Booking](prompt/matching/implementation.md)
-- [Trust & Reputation](prompt/trust/implementation.md)
-- [Notifications](prompt/notifications/implementation.md)
-- [Payment](prompt/payment/implementation.md)
+### 1. Success — Resource
 
-## 🔒 Security
+For endpoints that return domain data (`UserResource`, `WorkshopResource`, etc.):
 
-- **JWT Tokens**: Stateless authentication with configurable expiration
-- **BCrypt**: Password hashing with salt
-- **Role-Based Access**: Fine-grained permission control
-- **Email Verification**: Mandatory email verification
-- **Password Reset**: Secure token-based reset flow
-- **CORS**: Configured for mobile app origins
-
-## 🚢 Deployment
-
-### Production Build
-
-```bash
-mvn clean package -Pprod -DskipTests
+```json
+{
+  "id": 42,
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "phoneNumber": "+51999888777",
+  "active": true,
+  "verified": true
+}
 ```
 
-### Run Production
+### 2. Success — Authentication
 
-```bash
-java -jar target/backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+`POST /api/v1/users/signin` returns a JWT bundle:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 604800,
+  "user": { "id": 42, "email": "jane@example.com", "...": "..." }
+}
 ```
 
-### Docker (Optional)
+`expiresIn` is in **seconds** (currently `604800` = 7 days).
 
-```bash
-docker build -t autonexo-backend .
-docker run -p 8080:8080 --env-file .env autonexo-backend
+### 3. Success — Message
+
+For endpoints that only need to confirm an action (`signup`, `change-password`, `verify-email`, etc.):
+
+```json
+{
+  "message": "User registered successfully"
+}
 ```
 
-## 📄 License
+> The frontend should always read `body.message` instead of treating the body as a plain string.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
 
-## 👥 Authors
+## Error Handling
 
-- Development Team - ATG 2025-20
+### Error Response Schema
 
-## 📞 Support
+**Every** error response — whether produced by the controller, the global handler, an `@ControllerAdvice`, or Spring Security — has the same JSON shape:
 
-For issues and questions:
-- Support Contact [https://www.instagram.com/rafavivancoo]
+```json
+{
+  "timestamp": "2026-06-09T12:34:56.789",
+  "status":    409,
+  "error":     "Conflict",
+  "errorCode": "EMAIL_ALREADY_EXISTS",
+  "message":   "An account with this email already exists",
+  "path":      "/api/v1/users/signup"
+}
+```
+
+| Field        | Type     | Description                                                                                 |
+| ------------ | -------- | ------------------------------------------------------------------------------------------- |
+| `timestamp`  | string   | ISO-8601 local time the error was produced.                                                 |
+| `status`     | int      | HTTP status code (e.g. `400`, `401`, `404`, `409`, `500`).                                  |
+| `error`      | string   | Standard HTTP reason phrase (e.g. `"Bad Request"`, `"Conflict"`).                          |
+| `errorCode`  | string   | **Machine-readable code** (see [Error Codes](#error-codes)). Use this for i18n / branching. |
+| `message`    | string   | **User-friendly, safe-to-display** message.                                                 |
+| `path`       | string   | Request URI that produced the error.                                                        |
+
+### Error Codes
+
+| `errorCode`             | HTTP | Meaning                                                          |
+| ----------------------- | ---- | ---------------------------------------------------------------- |
+| `USER_NOT_FOUND`        | 404  | No user matches the requested identifier.                        |
+| `INVALID_CREDENTIALS`   | 401  | Email or password is wrong.                                      |
+| `EMAIL_ALREADY_EXISTS`  | 409  | Signup attempted with an email that is already registered.       |
+| `ACCOUNT_DEACTIVATED`   | 403  | The account exists but is deactivated.                           |
+| `UNAUTHORIZED`          | 401  | Missing or invalid authentication token.                         |
+| `ACCESS_DENIED`         | 403  | Authenticated user lacks permission.                             |
+| `VALIDATION_ERROR`      | 400  | Request payload failed `@Valid` validation.                      |
+| `INVALID_TOKEN`         | 400  | Verification or password-reset token is invalid or expired.      |
+| `INTERNAL_ERROR`        | 500  | Unexpected server error. The user-friendly message is generic.  |
+
+> **Frontend tip:** Switch on `errorCode` (not on `message` or `status`) for internationalization and analytics. The `message` is for direct display but its wording may evolve.
+
+### Validation Errors
+
+`@Valid` failures return `400` with `errorCode = "VALIDATION_ERROR"`. The first field-level error is reported in `message`:
+
+```json
+{
+  "timestamp": "...",
+  "status": 400,
+  "error": "Bad Request",
+  "errorCode": "VALIDATION_ERROR",
+  "message": "email: must be a well-formed email address",
+  "path": "/api/v1/users/signup"
+}
+```
+
+> The current implementation only surfaces the **first** validation error. If you need all field-level errors surfaced as an array, that is a follow-up enhancement.
+
+### Security Errors (401 / 403 from Spring Security)
+
+Two paths lead to auth/security errors:
+
+1. **No/bad JWT** → `UnauthorizedRequestHandlerEntryPoint` → `401 UNAUTHORIZED`
+2. **JWT ok but insufficient role** → `UnauthorizedRequestHandlerAccessDenied` → `403 ACCESS_DENIED`
+
+Both return the same `ErrorResponse` JSON shape, so the frontend can use one parser.
+
+---
+
+## Authentication
+
+All non-public endpoints require a `Bearer` JWT in the `Authorization` header:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+Public endpoints (no auth required):
+
+- `POST /api/v1/users/signup`
+- `POST /api/v1/users/signin`
+- `GET  /api/v1/users/available-roles`
+- `POST /api/v1/users/forgot-password`
+- `POST /api/v1/users/reset-password`
+- `GET  /api/v1/workshops/catalog/**`
+- `GET  /api/v1/workshops/search`
+- `GET  /api/v1/workshops/*/public`
+- Swagger / actuator (health/info/metrics)
+
+---
+
+## IAM Endpoints
+
+Base path: `/api/v1/users`
+
+| Method | Path                          | Auth | Description                                       | Success     | Possible Errors                                                       |
+| ------ | ----------------------------- | ---- | ------------------------------------------------- | ----------- | --------------------------------------------------------------------- |
+| POST   | `/signup`                     | ❌   | Register a new user                               | `201` + `MessageResponse` | `400 VALIDATION_ERROR` · `409 EMAIL_ALREADY_EXISTS`                   |
+| POST   | `/signin`                     | ❌   | Authenticate and obtain a JWT                     | `200` + `AuthenticationResponseResource` | `400 VALIDATION_ERROR` · `401 INVALID_CREDENTIALS` · `403 ACCOUNT_DEACTIVATED` |
+| GET    | `/available-roles`            | ❌   | List roles available during registration          | `200` array | —                                                                     |
+| POST   | `/forgot-password`            | ❌   | Request a password-reset email                    | `200` + `MessageResponse` | — *(always 200 to prevent email enumeration)*                         |
+| POST   | `/reset-password`             | ❌   | Reset password using token from email             | `200` + `MessageResponse` | `400 INVALID_TOKEN`                                                   |
+| POST   | `/resend-verification`        | ❌   | Resend email-verification token                   | `200` + `MessageResponse` | `404 USER_NOT_FOUND`                                                  |
+| POST   | `/verify-email`               | ❌   | Confirm email with token                          | `200` + `MessageResponse` | `400 INVALID_TOKEN`                                                   |
+| GET    | `/me`                         | ✅   | Get current authenticated user                    | `200` + `UserResource` | `401 UNAUTHORIZED` · `404 USER_NOT_FOUND` · `403 ACCOUNT_DEACTIVATED` |
+| PUT    | `/me`                         | ✅   | Update current user's profile                     | `200` + `UserResource` | `401 UNAUTHORIZED` · `404 USER_NOT_FOUND` · `403 ACCOUNT_DEACTIVATED` |
+| PUT    | `/me/password`                | ✅   | Change current password                           | `200` + `MessageResponse` | `400 VALIDATION_ERROR` · `401 INVALID_CREDENTIALS` · `403 ACCOUNT_DEACTIVATED` |
+| DELETE | `/me`                         | ✅   | Deactivate current account                        | `200` + `MessageResponse` | `401 UNAUTHORIZED` · `404 USER_NOT_FOUND`                             |
+| GET    | `/by-email?email=…`           | ✅   | Look up user by email                             | `200` + `UserResource` | `404 USER_NOT_FOUND`                                                  |
+| GET    | `/`                           | ✅   | List all users (admin-ish)                        | `200` array | —                                                                     |
+| GET    | `/verification-status?email=…`| ❌   | Check whether an email is verified                | `200` `{email, verified}` | `404 USER_NOT_FOUND`                                                  |
+
+### Example: Successful signup
+
+**Request**
+
+```http
+POST /api/v1/users/signup
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "S3cure!pass",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "phoneNumber": "+51999888777",
+  "requestedRole": "CAR_OWNER"
+}
+```
+
+**Response — `201 Created`**
+
+```json
+{ "message": "User registered successfully" }
+```
+
+### Example: Email already taken
+
+**Response — `409 Conflict`**
+
+```json
+{
+  "timestamp": "2026-06-09T12:34:56.789",
+  "status": 409,
+  "error": "Conflict",
+  "errorCode": "EMAIL_ALREADY_EXISTS",
+  "message": "An account with this email already exists",
+  "path": "/api/v1/users/signup"
+}
+```
+
+### Example: Invalid credentials on signin
+
+**Response — `401 Unauthorized`**
+
+```json
+{
+  "timestamp": "2026-06-09T12:34:56.789",
+  "status": 401,
+  "error": "Unauthorized",
+  "errorCode": "INVALID_CREDENTIALS",
+  "message": "Invalid email or password",
+  "path": "/api/v1/users/signin"
+}
+```
+
+### Example: Unauthenticated request to a protected endpoint
+
+**Response — `401 Unauthorized`** *(from Spring Security entry point)*
+
+```json
+{
+  "timestamp": "2026-06-09T12:34:56.789",
+  "status": 401,
+  "error": "Unauthorized",
+  "errorCode": "UNAUTHORIZED",
+  "message": "Authentication required",
+  "path": "/api/v1/users/me"
+}
+```
+
+---
+
+## Frontend Integration Tips
+
+1. **Single error parser.** Always parse the response as `ErrorResponse`. Switch on `errorCode` to decide what to do.
+2. **HTTP status is reliable.** Pair `status` and `errorCode`:
+   - `401 UNAUTHORIZED` or `401 INVALID_CREDENTIALS` → redirect to login.
+   - `403 ACCESS_DENIED` or `403 ACCOUNT_DEACTIVATED` → show "no permission" UI.
+   - `404 USER_NOT_FOUND` → show "not found" UI.
+   - `409 EMAIL_ALREADY_EXISTS` → prompt user to sign in instead.
+   - `400 VALIDATION_ERROR` / `400 INVALID_TOKEN` → display `message` inline on the form.
+   - `500 INTERNAL_ERROR` → generic retry banner.
+3. **Treat `message` as i18n-ready.** If you ship multiple languages, map `errorCode → localized string` on the frontend rather than translating the server's `message` directly.
+4. **Read success bodies as JSON too.** All `2xx` bodies are JSON objects (never plain strings). `success` and `error` both follow the same parsing rules.
+5. **Don't parse `error` or `status` to drive UX.** Use `errorCode`. `status` is informational; the `errorCode` is the contract.
+6. **Forgot password is intentionally opaque.** It always returns `200` regardless of whether the email exists, to prevent account enumeration. Surface a generic "check your inbox" message; do not try to distinguish "email sent" from "email not found".
+
+---
+
+## Versioning & Compatibility
+
+- All breaking changes must be introduced under a new path prefix (`/api/v2/...`).
+- Adding a new field to `ErrorResponse` is non-breaking; the frontend should ignore unknown fields.
+- Renaming an `errorCode` value is breaking — coordinate with the frontend team first.
