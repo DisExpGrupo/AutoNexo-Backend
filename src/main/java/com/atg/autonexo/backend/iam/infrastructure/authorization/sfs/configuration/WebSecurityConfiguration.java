@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
@@ -38,6 +39,7 @@ public class WebSecurityConfiguration {
     private final BearerTokenService tokenService;
     private final BCryptHashingService hashingService;
     private final AuthenticationEntryPoint unauthorizedRequestHandler;
+    private final AccessDeniedHandler unauthorizedRequestAccessDeniedHandler;
     private final WorkshopExtractionFilter workshopExtractionFilter; // NUEVO CAMPO
 
     /**
@@ -48,13 +50,15 @@ public class WebSecurityConfiguration {
             BearerTokenService tokenService,
             BCryptHashingService hashingService,
             AuthenticationEntryPoint authenticationEntryPoint,
-            WorkshopExtractionFilter workshopExtractionFilter 
+            AccessDeniedHandler accessDeniedHandler,
+            WorkshopExtractionFilter workshopExtractionFilter
     ) {
         this.userDetailsService = userDetailsService;
         this.tokenService = tokenService;
         this.hashingService = hashingService;
         this.unauthorizedRequestHandler = authenticationEntryPoint;
-        this.workshopExtractionFilter = workshopExtractionFilter; 
+        this.unauthorizedRequestAccessDeniedHandler = accessDeniedHandler;
+        this.workshopExtractionFilter = workshopExtractionFilter;
     }
     /**
      * Creates the Bearer Authorization Request Filter.
@@ -110,7 +114,9 @@ public class WebSecurityConfiguration {
         
         // Disable CSRF, configure exception handling and session policy
         http.csrf(csrfConfigurer -> csrfConfigurer.disable())
-                .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(unauthorizedRequestHandler))
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(unauthorizedRequestHandler)
+                        .accessDeniedHandler(unauthorizedRequestAccessDeniedHandler))
                 .sessionManagement( customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 
                 // Authorization configuration

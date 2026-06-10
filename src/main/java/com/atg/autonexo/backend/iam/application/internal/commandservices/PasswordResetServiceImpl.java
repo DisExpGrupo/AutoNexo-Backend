@@ -14,6 +14,7 @@ import com.atg.autonexo.backend.iam.application.internal.outboundservices.notifi
 import com.atg.autonexo.backend.iam.domain.model.commands.RequestPasswordResetCommand;
 import com.atg.autonexo.backend.iam.domain.model.commands.ResetPasswordCommand;
 import com.atg.autonexo.backend.iam.domain.model.entities.PasswordResetToken;
+import com.atg.autonexo.backend.iam.domain.model.exceptions.InvalidTokenException;
 import com.atg.autonexo.backend.iam.domain.services.PasswordResetService;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.PasswordResetTokenRepository;
 import com.atg.autonexo.backend.iam.infrastructure.persistence.jpa.repositories.UserRepository;
@@ -90,14 +91,14 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // Find token
         Optional<PasswordResetToken> tokenOptional = tokenRepository.findByToken(command.token());
         if (tokenOptional.isEmpty()) {
-            throw new IllegalArgumentException("Invalid or expired reset token");
+            throw new InvalidTokenException();
         }
         
         PasswordResetToken resetToken = tokenOptional.get();
         
         // Validate token
         if (!resetToken.isValid()) {
-            throw new IllegalArgumentException("Invalid or expired reset token");
+            throw new InvalidTokenException();
         }
         
         // Get user
