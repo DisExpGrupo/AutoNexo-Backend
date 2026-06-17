@@ -1,6 +1,13 @@
 package com.atg.autonexo.backend.shared.domain.model.valueobjects;
 
-public record Coordinates(double latitude, double longitude) {
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+@Embeddable
+public record Coordinates(
+    @Column(name = "latitude") double latitude,
+    @Column(name = "longitude") double longitude
+) {
     public Coordinates {
         if (latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90.");
