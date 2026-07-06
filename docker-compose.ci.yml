@@ -38,6 +38,7 @@ services:
       CLOUDINARY_API_KEY: test-key
       CLOUDINARY_API_SECRET: test-secret
       CLOUDINARY_BASE_URL: test-url
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     ports:
       - "8080:8080"
     healthcheck:
