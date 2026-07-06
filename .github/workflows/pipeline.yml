@@ -1,11 +1,7 @@
 name: CI/CD - Pipeline Principal
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [develop, main]
-  workflow_dispatch: # Mantiene el botón manual en la web
+  workflow_dispatch:
 
 jobs:
   # ==========================================
