@@ -1,0 +1,171 @@
+name: Unified Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/AutoNexo-Frontend
+          path: ./frontend
+
+      - name: Checkout e2e
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/AutoNexo-e2e
+          path: ./e2e
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: |
+            ./frontend/pnpm-lock.yaml
+            ./e2e/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install e2e dependencies
+        working-directory: ./e2e
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: ./e2e
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build backend JAR
+        run: ./mvnw clean package -DskipTests -q
+
+      - name: Start CI Docker Compose stack
+        run: docker compose -f docker-compose.ci.yml up -d --build
+
+      - name: Start frontend dev server
+        working-directory: ./frontend
+        run: |
+          pnpm dev &
+          echo $! > /tmp/vite.pid
+
+      - name: Run backend tests
+        run: ./mvnw test -q
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: pnpm test run
+
+      - name: Wait for API health
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8080/actuator/health > /dev/null; then
+              echo "API is healthy"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/60)"
+            sleep 2
+          done
+          echo "API failed to become healthy"
+          docker compose -f docker-compose.ci.yml logs api
+          exit 1
+
+      - name: Wait for frontend dev server
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:5173 > /dev/null; then
+              echo "Frontend dev server is ready"
+              exit 0
+            fi
+            echo "Waiting for frontend dev server... ($i/60)"
+            sleep 2
+          done
+          echo "Frontend dev server failed to start"
+          exit 1
+
+      - name: Prepare E2E environment file
+        working-directory: ./e2e
+        run: |
+          cat > .env.e2e <<EOF
+          E2E_BASE_URL=http://localhost:5173
+          E2E_API_URL=http://localhost:8080/api
+          E2E_WORKSHOP_LATITUDE=-12.108527
+          E2E_WORKSHOP_LONGITUDE=-76.992718
+          E2E_HEADLESS=true
+          E2E_SLOWMO=0
+          E2E_VIDEO=true
+          E2E_VIDEO_DIR=artifacts/videos
+          E2E_DEBUG=false
+          E2E_DB_HOST=localhost
+          E2E_DB_PORT=3306
+          E2E_DB_NAME=autonexo-database
+          E2E_DB_USER=root
+          E2E_DB_PASSWORD=Admin-123
+          EOF
+
+      - name: Run E2E tests
+        working-directory: ./e2e
+        run: pnpm e2e
+
+      - name: Upload E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/artifacts/screenshot-*.png
+            e2e/artifacts/videos/
+            e2e/artifacts/cucumber-report.html
+            e2e/artifacts/cucumber-report.json
+
+      - name: Tear down Docker Compose stack
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down -v
+
+      - name: Stop frontend dev server
+        if: always()
+        run: |
+          if [ -f /tmp/vite.pid ]; then
+            kill $(cat /tmp/vite.pid) || true
+          fi
+
+  deploy:
+    name: Deploy to Fly.io
+    runs-on: ubuntu-latest
+    concurrency: deploy-group
+    needs: build-and-test
+    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

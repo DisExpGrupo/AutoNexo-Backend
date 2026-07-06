@@ -1,0 +1,49 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: autonexo-mysql-ci
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin-123
+      MYSQL_DATABASE: autonexo-database
+    ports:
+      - "3306:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pAdmin-123"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: autonexo-api-ci
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: autonexo-database
+      DB_USERNAME: root
+      DB_PASSWORD: Admin-123
+      JWT_SECRET: ci-jwt-secret-for-testing-only-not-used-in-production
+      JWT_EXPIRATION_DAYS: 7
+      EMAIL_USERNAME: noreply@autonexo.com
+      EMAIL_PASSWORD: test
+      CLOUDINARY_CLOUD_NAME: test
+      CLOUDINARY_API_KEY: test-key
+      CLOUDINARY_API_SECRET: test-secret
+      CLOUDINARY_BASE_URL: test-url
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
