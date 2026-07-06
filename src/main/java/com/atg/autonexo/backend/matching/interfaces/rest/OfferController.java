@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.atg.autonexo.backend.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 import com.atg.autonexo.backend.matching.application.internal.commandservices.OfferCommandServiceImpl;
 import com.atg.autonexo.backend.matching.application.internal.queryservices.OfferQueryServiceImpl;
+import com.atg.autonexo.backend.workshop.domain.services.WorkshopQueryService;
 import com.atg.autonexo.backend.matching.domain.exceptions.OfferNotFoundException;
 import com.atg.autonexo.backend.matching.domain.model.queries.GetOffersByServiceRequestQuery;
 import com.atg.autonexo.backend.matching.domain.model.queries.GetUserOffersQuery;
@@ -44,12 +45,15 @@ public class OfferController {
     
     private final OfferCommandServiceImpl commandService;
     private final OfferQueryServiceImpl queryService;
-    
+    private final WorkshopQueryService workshopQueryService;
+
     public OfferController(
             OfferCommandServiceImpl commandService,
-            OfferQueryServiceImpl queryService) {
+            OfferQueryServiceImpl queryService,
+            WorkshopQueryService workshopQueryService) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.workshopQueryService = workshopQueryService;
     }
     
     @PostMapping
@@ -58,7 +62,7 @@ public class OfferController {
             Long workshopId = WorkshopContext.getCurrentWorkshopIdAsLong();
             var command = OfferCommandFromResourceAssembler.toCommandFromResource(resource, workshopId);
             var offer = commandService.handle(command);
-            var resourceResponse = OfferResourceFromEntityAssembler.toResourceFromEntity(offer);
+            var resourceResponse = OfferResourceFromEntityAssembler.toResourceFromEntity(offer, workshopQueryService);
             return ResponseEntity.status(HttpStatus.CREATED).body(resourceResponse);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -75,7 +79,7 @@ public class OfferController {
             var query = new GetOffersByServiceRequestQuery(requestId);
             var offers = queryService.handle(query);
             var resources = offers.stream()
-                .map(OfferResourceFromEntityAssembler::toResourceFromEntity)
+                .map(o -> OfferResourceFromEntityAssembler.toResourceFromEntity(o, workshopQueryService))
                 .collect(Collectors.toList());
             return ResponseEntity.ok(resources);
         } catch (Exception e) {
@@ -93,7 +97,7 @@ public class OfferController {
             var query = new GetWorkshopOffersQuery(new WorkshopId(workshopId), statusEnum);
             var offers = queryService.handle(query);
             var resources = offers.stream()
-                .map(OfferResourceFromEntityAssembler::toResourceFromEntity)
+                .map(o -> OfferResourceFromEntityAssembler.toResourceFromEntity(o, workshopQueryService))
                 .collect(Collectors.toList());
             return ResponseEntity.ok(resources);
         } catch (IllegalArgumentException e) {
@@ -113,7 +117,7 @@ public class OfferController {
             var query = new GetUserOffersQuery(userId, statusEnum);
             var offers = queryService.handle(query);
             var resources = offers.stream()
-                .map(OfferResourceFromEntityAssembler::toResourceFromEntity)
+                .map(o -> OfferResourceFromEntityAssembler.toResourceFromEntity(o, workshopQueryService))
                 .collect(Collectors.toList());
             return ResponseEntity.ok(resources);
         } catch (IllegalArgumentException e) {
