@@ -10,6 +10,7 @@ public record OfferResource(
     Long id,
     Long serviceRequestId,
     Long workshopId,
+    Float workshopTrustScore,
     BigDecimal proposedPriceAmount,
     String currency,
     LocalDateTime proposedDate,
